@@ -1,0 +1,507 @@
+<!doctype html>
+
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ניהול משמרות – נונע</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#111827" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <!-- אופציונלי: הפוך ל-PWA מלא ע"י הוספת manifest.json ו-sw.js -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      }
+    </script>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; }
+      .card { @apply bg-white rounded-2xl shadow p-4 md:p-6; }
+      .btn  { @apply px-4 py-2 rounded-xl font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed; }
+      .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white; }
+      .btn-danger  { @apply bg-red-600 hover:bg-red-700 text-white; }
+      .btn-gray    { @apply bg-gray-200 hover:bg-gray-300; }
+      .tag { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100; }
+      .input, select { @apply w-full border rounded-xl px-3 py-2 bg-white; }
+      .grid-col { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
+      .sec-title { @apply text-lg font-bold mb-2; }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+      <header class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-extrabold">🧩 ניהול משמרות – נונע</h1>
+        <div class="flex items-center gap-2">
+          <span id="whoami" class="text-sm text-gray-600 hidden"></span>
+          <button id="btnSignOut" class="btn btn-gray hidden">התנתק</button>
+        </div>
+      </header><!-- 🔧 קונפיגורציה (להחליף בערכים שלך או להזריק מה-HTML הראשי) -->
+  <script>
+    window.__SUPABASE_URL__ = window.__SUPABASE_URL__ || 'https://YOUR-PROJECT.supabase.co';
+    window.__SUPABASE_ANON_KEY__ = window.__SUPABASE_ANON_KEY__ || 'YOUR-ANON-KEY';
+  </script>
+
+  <!-- 🔐 התחברות -->
+  <section id="authSection" class="card">
+    <div class="sec-title">התחברות</div>
+    <div class="grid md:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-sm mb-1">אימייל</label>
+        <input id="email" class="input" type="email" placeholder="you@example.com" />
+      </div>
+      <div>
+        <label class="block text-sm mb-1">סיסמה</label>
+        <input id="password" class="input" type="password" placeholder="••••••••" />
+      </div>
+      <div class="flex items-end">
+        <button id="btnSignIn" class="btn btn-primary w-full">כניסה</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 👷 פאנל עובד -->
+  <section id="employeeSection" class="hidden space-y-4">
+    <div class="card">
+      <div class="sec-title">הגשת זמינות לשבוע</div>
+      <div class="grid-col">
+        <div>
+          <label class="block text-sm mb-1">שבוע שמתחיל ביום ראשון</label>
+          <input id="avWeekStart" type="date" class="input" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">יום בשבוע</label>
+          <select id="avDay" class="input">
+            <option value="0">ראשון</option>
+            <option value="1">שני</option>
+            <option value="2">שלישי</option>
+            <option value="3">רביעי</option>
+            <option value="4">חמישי</option>
+            <option value="5" disabled>שישי (סגור)</option>
+            <option value="6">שבת</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">משבצת</label>
+          <select id="avSlot" class="input">
+            <option value="lunch">צהריים (11–17)</option>
+            <option value="dinner">ערב (17–23)</option>
+            <option value="long">ארוכה (12–23)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">הערה (אופציונלי)</label>
+          <input id="avNote" class="input" placeholder="למשל: מעדיף להגיע ב-12:30" />
+        </div>
+        <div class="flex items-end">
+          <button id="btnSubmitAvailability" class="btn btn-primary w-full">שמור זמינות</button>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">דד-ליין הגשה: שישי 14:00 (נבדק בצד לקוח; ניתן לשינוי בהמשך).</p>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">המשמרות שלי</div>
+      <div id="myShifts" class="space-y-2 text-sm"></div>
+    </div>
+  </section>
+
+  <!-- 🧑‍💼 פאנל מנהל -->
+  <section id="managerSection" class="hidden space-y-4">
+    <!-- יצירת שבוע -->
+    <div class="card">
+      <div class="sec-title">יצירת שבוע חדש</div>
+      <div class="grid-col">
+        <div>
+          <label class="block text-sm mb-1">שבוע שמתחיל ביום ראשון</label>
+          <input id="wkWeekStart" type="date" class="input" />
+        </div>
+        <div class="flex items-end">
+          <button id="btnGenerateWeek" class="btn btn-primary w-full">צור שבוע</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- שיבוץ משמרות -->
+    <div class="card space-y-4">
+      <div class="sec-title">שיבוץ משמרות בשבוע</div>
+      <div class="grid-col">
+        <div>
+          <label class="block text-sm mb-1">בחר תאריך (בתוך השבוע)</label>
+          <input id="mgrDate" type="date" class="input" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">משבצת</label>
+          <select id="mgrSlot" class="input">
+            <option value="lunch">צהריים</option>
+            <option value="dinner">ערב</option>
+            <option value="long">ארוכה</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">עובד</label>
+          <select id="mgrEmployee" class="input"></select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">תפקיד</label>
+          <select id="mgrRole" class="input">
+            <option value="chef">טבח</option>
+            <option value="counter">דלפק</option>
+            <option value="driver">שליח</option>
+            <option value="other">אחר</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">שעת התחלה לעובד</label>
+          <input id="mgrStart" type="time" class="input" value="11:00" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">שעת סיום לעובד</label>
+          <input id="mgrEnd" type="time" class="input" value="17:00" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">רכב (לשליחים)</label>
+          <select id="mgrVehicle" class="input">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="btnAssign" class="btn btn-primary w-full">שבץ עובד</button>
+        </div>
+      </div>
+      <div>
+        <div class="sec-title">צפייה במשמרות ליום</div>
+        <div id="dayShifts" class="text-sm space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- ניהול עובדים -->
+    <div class="card space-y-3">
+      <div class="sec-title">ניהול עובדים</div>
+      <div class="grid-col">
+        <div>
+          <label class="block text-sm mb-1">שם מלא</label>
+          <input id="empName" class="input" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">טלפון</label>
+          <input id="empPhone" class="input" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">כתובת</label>
+          <input id="empAddress" class="input" />
+        </div>
+        <div class="flex items-end gap-2">
+          <button id="btnAddEmp" class="btn btn-primary w-full">הוסף עובד</button>
+        </div>
+      </div>
+      <div id="empList" class="text-sm"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Supabase JS v2 -->
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  const supabase = createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__);
+
+  // Elements
+  const authSection = document.getElementById('authSection');
+  const employeeSection = document.getElementById('employeeSection');
+  const managerSection = document.getElementById('managerSection');
+  const whoami = document.getElementById('whoami');
+  const btnSignOut = document.getElementById('btnSignOut');
+
+  // Auth handlers
+  document.getElementById('btnSignIn').addEventListener('click', async () => {
+    const email = (document.getElementById('email').value || '').trim();
+    const password = document.getElementById('password').value || '';
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return alert('שגיאת התחברות: ' + error.message);
+    await afterAuth();
+  });
+
+  btnSignOut.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    location.reload();
+  });
+
+  async function afterAuth() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    whoami.classList.remove('hidden');
+    whoami.textContent = user.email || user.id;
+    btnSignOut.classList.remove('hidden');
+
+    // מה התפקיד שלי?
+    const { data: prof, error: perr } = await supabase
+      .from('shifts.user_profiles')
+      .select('app_role, employee_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (perr) return alert('שגיאת פרופיל: ' + perr.message);
+
+    authSection.classList.add('hidden');
+    if (prof?.app_role === 'manager') {
+      initManager();
+    } else {
+      initEmployee(prof?.employee_id);
+    }
+  }
+
+  // ===== Employee Panel =====
+  async function initEmployee(employeeId) {
+    employeeSection.classList.remove('hidden');
+    // מילוי ברירת מחדל לתאריך שבוע ראשון הקרוב
+    document.getElementById('avWeekStart').value = isoOfUpcomingSunday();
+
+    document.getElementById('btnSubmitAvailability').addEventListener('click', async () => {
+      const week_start = document.getElementById('avWeekStart').value;
+      const day_of_week = +document.getElementById('avDay').value;
+      const slot = document.getElementById('avSlot').value;
+      const note = document.getElementById('avNote').value || null;
+
+      // בדיקת דד-ליין: שישי 14:00 לשבוע הבא (בצד לקוח בלבד)
+      if (!withinDeadline(week_start)) {
+        return alert('עבר הדד-ליין להגשת זמינות לשבוע זה (שישי 14:00).');
+      }
+
+      const { error } = await supabase.from('shifts.availability').insert({
+        employee_id: employeeId,
+        week_start, day_of_week, slot, note
+      });
+      if (error) return alert('שגיאה בשמירת זמינות: ' + error.message);
+      alert('הזמינות נשמרה ✅');
+    });
+
+    await refreshMyShifts();
+  }
+
+  async function refreshMyShifts() {
+    const box = document.getElementById('myShifts');
+    box.innerHTML = '';
+    // משיכת השיבוצים של המשתמש (RLS יגביל רק לשלו)
+    const { data: rows, error } = await supabase
+      .from('shifts.shift_assignments')
+      .select('id, start_time, end_time, status, role, shift:shift_id(date, slot, planned_start, planned_end), vehicle:vehicle_id(code)')
+      .order('start_time');
+    if (error) return box.innerHTML = `<div class="text-red-600">${error.message}</div>`;
+    if (!rows?.length) return box.innerHTML = '<div class="text-gray-500">אין שיבוצים להצגה.</div>';
+    rows.forEach(r => {
+      const d = new Date(r.shift.date);
+      const day = d.toLocaleDateString('he-IL', { weekday:'long', year:'numeric', month:'2-digit', day:'2-digit' });
+      const slotTxt = slotName(r.shift.slot);
+      const veh = r.vehicle?.code ? ` · רכב ${r.vehicle.code}` : '';
+      const el = document.createElement('div');
+      el.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between';
+      el.innerHTML = `<div>
+          <div class="font-semibold">${day} · ${slotTxt}${veh}</div>
+          <div class="text-gray-600">שעות אישיות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)} · תפקיד: ${roleName(r.role)}</div>
+        </div>
+        <span class="tag">${statusName(r.status)}</span>`;
+      box.appendChild(el);
+    });
+  }
+
+  // ===== Manager Panel =====
+  async function initManager() {
+    managerSection.classList.remove('hidden');
+    document.getElementById('wkWeekStart').value = isoOfUpcomingSunday();
+    document.getElementById('mgrDate').value = isoToday();
+    await loadActiveEmployees();
+    await loadVehicles();
+
+    document.getElementById('btnGenerateWeek').addEventListener('click', async () => {
+      const week = document.getElementById('wkWeekStart').value;
+      const { data, error } = await supabase.rpc('generate_weekly_roster', { p_week_start: week });
+      if (error) return alert('שגיאה ביצירת שבוע: ' + error.message);
+      alert('נוצר שבוע בהצלחה ✅');
+    });
+
+    document.getElementById('btnAssign').addEventListener('click', async () => {
+      // מצא/צור shift לאותו יום/סלוט מתוך ה-roster של אותו שבוע
+      const date = document.getElementById('mgrDate').value;
+      const slot = document.getElementById('mgrSlot').value;
+      const employee_id = document.getElementById('mgrEmployee').value;
+      const role = document.getElementById('mgrRole').value;
+      const start_time = document.getElementById('mgrStart').value;
+      const end_time = document.getElementById('mgrEnd').value;
+      const vehicle_id = document.getElementById('mgrVehicle').value || null;
+
+      // שלוף shift קיים לתאריך+סלוט
+      const { data: shiftRow, error: sErr } = await supabase
+        .from('shifts.shifts')
+        .select('id')
+        .eq('date', date)
+        .eq('slot', slot)
+        .maybeSingle();
+      if (sErr) return alert('שגיאה בחיפוש משמרת: ' + sErr.message);
+      if (!shiftRow) return alert('לא נמצאה משמרת ליום/סלוט הזה. ודא שיצרת שבוע דרך "צור שבוע".');
+
+      const ins = {
+        shift_id: shiftRow.id,
+        employee_id, role, start_time, end_time,
+        vehicle_id: vehicle_id || null,
+        status: 'planned'
+      };
+      const { error } = await supabase.from('shifts.shift_assignments').insert(ins);
+      if (error) return alert('שגיאה בשיבוץ: ' + error.message);
+      alert('שובץ בהצלחה ✅');
+      renderDayShifts();
+    });
+
+    document.getElementById('mgrDate').addEventListener('change', renderDayShifts);
+    document.getElementById('mgrSlot').addEventListener('change', renderDayShifts);
+    await renderDayShifts();
+
+    // הוספת עובד
+    document.getElementById('btnAddEmp').addEventListener('click', async () => {
+      const full_name = document.getElementById('empName').value.trim();
+      if (!full_name) return alert('חסר שם');
+      const phone = document.getElementById('empPhone').value.trim() || null;
+      const address = document.getElementById('empAddress').value.trim() || null;
+      const { data, error } = await supabase.from('shifts.employees').insert({ full_name, phone, address }).select('id');
+      if (error) return alert('שגיאה בהוספת עובד: ' + error.message);
+      document.getElementById('empName').value=''; document.getElementById('empPhone').value=''; document.getElementById('empAddress').value='';
+      await loadActiveEmployees();
+      await listEmployees();
+    });
+
+    await listEmployees();
+  }
+
+  async function loadActiveEmployees() {
+    const sel = document.getElementById('mgrEmployee');
+    sel.innerHTML = '';
+    const { data, error } = await supabase.from('shifts.employees').select('id, full_name').eq('active', true).order('full_name');
+    if (error) { sel.innerHTML = '<option>שגיאה</option>'; return; }
+    data.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.id; o.textContent = e.full_name; sel.appendChild(o);
+    });
+  }
+
+  async function loadVehicles() {
+    const sel = document.getElementById('mgrVehicle');
+    const { data, error } = await supabase.from('shifts.vehicles').select('id, code').eq('active', true).order('code');
+    if (error) return;
+    data.forEach(v => { const o = document.createElement('option'); o.value=v.id; o.textContent=v.code; sel.appendChild(o); });
+  }
+
+  async function renderDayShifts() {
+    const date = document.getElementById('mgrDate').value;
+    const slot = document.getElementById('mgrSlot').value;
+    const box = document.getElementById('dayShifts');
+    box.innerHTML = '';
+    const { data: s, error: e1 } = await supabase
+      .from('shifts.shifts')
+      .select('id, planned_start, planned_end')
+      .eq('date', date)
+      .eq('slot', slot)
+      .maybeSingle();
+    if (e1) return box.innerHTML = `<div class='text-red-600'>${e1.message}</div>`;
+    if (!s) return box.innerHTML = `<div class='text-gray-500'>אין משמרת ביום זה. צור שבוע תחילה.</div>`;
+
+    const { data: rows, error } = await supabase
+      .from('shifts.shift_assignments')
+      .select('id, employee:employee_id(full_name, phone), role, start_time, end_time, vehicle:vehicle_id(code), status')
+      .eq('shift_id', s.id)
+      .order('start_time');
+    if (error) return box.innerHTML = `<div class='text-red-600'>${error.message}</div>`;
+    if (!rows?.length) return box.innerHTML = `<div class='text-gray-500'>אין שיבוצים למשמרת זו.</div>`;
+    rows.forEach(r => {
+      const el = document.createElement('div');
+      el.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between';
+      el.innerHTML = `<div>
+          <div class="font-semibold">${r.employee?.full_name || '—'} · ${roleName(r.role)} ${r.vehicle?.code?('· רכב '+r.vehicle.code):''}</div>
+          <div class="text-gray-600">שעות אישיות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)} · טל׳ ${r.employee?.phone || ''}</div>
+        </div>
+        <span class="tag">${statusName(r.status)}</span>`;
+      box.appendChild(el);
+    });
+  }
+
+  async function listEmployees() {
+    const box = document.getElementById('empList');
+    const { data, error } = await supabase
+      .from('shifts.employees')
+      .select('id, full_name, phone, address, active, driver_license_verified')
+      .order('active', { ascending: false })
+      .order('full_name');
+    if (error) return box.innerHTML = `<div class='text-red-600'>${error.message}</div>`;
+    if (!data?.length) return box.innerHTML = '<div class="text-gray-500">אין עובדים</div>';
+    box.innerHTML = '';
+    data.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between gap-3';
+      row.innerHTML = `
+        <div>
+          <div class="font-semibold ${e.active? '':'line-through text-gray-400'}">${e.full_name}</div>
+          <div class="text-gray-600 text-xs">טל׳ ${e.phone || ''} · ${e.address || ''}</div>
+          <div class="mt-1 flex gap-2">
+            <span class="tag">${e.active? 'פעיל':'מושבת'}</span>
+            <span class="tag">רישיון: ${e.driver_license_verified? 'מאושר ✅':'לא מאושר'}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-gray text-sm" data-action="toggle-license" data-id="${e.id}">${e.driver_license_verified? 'בטל אישור':'אשר רישיון'}</button>
+          ${e.active ? `<button class="btn btn-danger text-sm" data-action="deactivate" data-id="${e.id}">הסר עובד</button>` : ''}
+        </div>`;
+      box.appendChild(row);
+    });
+    box.querySelectorAll('button').forEach(btn => btn.addEventListener('click', onEmpAction));
+  }
+
+  async function onEmpAction(ev) {
+    const id = ev.currentTarget.getAttribute('data-id');
+    const action = ev.currentTarget.getAttribute('data-action');
+    if (action === 'deactivate') {
+      if (!confirm('להסיר את העובד (soft delete)?')) return;
+      const { error } = await supabase.rpc('deactivate_employee', { p_employee_id: id });
+      if (error) return alert('שגיאה בהסרה: ' + error.message);
+      await loadActiveEmployees();
+      await listEmployees();
+    }
+    if (action === 'toggle-license') {
+      // שלוף מצב נוכחי ואז עדכון הפוך
+      const { data, error } = await supabase.from('shifts.employees').select('driver_license_verified').eq('id', id).maybeSingle();
+      if (error) return alert(error.message);
+      const { error: uerr } = await supabase
+        .from('shifts.employees')
+        .update({ driver_license_verified: !data.driver_license_verified })
+        .eq('id', id);
+      if (uerr) return alert('שגיאת אישור/ביטול רישיון: ' + uerr.message);
+      await listEmployees();
+    }
+  }
+
+  // ===== Utils =====
+  function slotName(s) { return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה'); }
+  function roleName(r){ return {chef:'טבח',counter:'דלפק',driver:'שליח',other:'אחר'}[r]||r; }
+  function statusName(s){ return {planned:'מתוכנן',confirmed:'מאושר',canceled:'מבוטל'}[s]||s; }
+
+  function isoToday(){
+    const d=new Date(); const z=d.getTimezoneOffset()*60000; return new Date(Date.now()-z).toISOString().slice(0,10);
+  }
+  function isoOfUpcomingSunday(){
+    const d = new Date();
+    const day = (d.getDay()+6)%7; // הפוך כדי ש-0=ראשון בישראל
+    const diff = -day; // חזרה לראשון הנוכחי
+    const sunday = new Date(d.getFullYear(), d.getMonth(), d.getDate()+diff);
+    const z=sunday.getTimezoneOffset()*60000; return new Date(sunday - z).toISOString().slice(0,10);
+  }
+  function withinDeadline(weekStartISO){
+    // דד-ליין: שישי 14:00 לפני תחילת השבוע המבוקש
+    const ws = new Date(weekStartISO+'T00:00:00');
+    const deadline = new Date(ws); // יום ראשון של אותו שבוע
+    deadline.setDate(deadline.getDate()-2); // שישי לפניו
+    deadline.setHours(14,0,0,0);
+    return new Date() <= deadline;
+  }
+
+  // Auto init if already logged in
+  (async () => { const { data:{ user } } = await supabase.auth.getUser(); if (user) afterAuth(); })();
+</script>
+
+  </body>
+</html>
