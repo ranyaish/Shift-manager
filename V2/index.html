@@ -1,75 +1,206 @@
 <!doctype html>
 <html lang="he" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ניהול משמרות – נונע</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ניהול משמרות – נונע</title>
 
-  <!-- 1) ודא ש-Tailwind נטען לפני כל דבר אחר -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind (טעינה אחת) -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <meta name="theme-color" content="#111827" />
-  <link rel="icon" type="image/png" href="icon-192.png" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+    <!-- קונפיג של Supabase (החלף לערכים שלך) -->
+    <script>
+      window.__SUPABASE_URL__ = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
+      window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
+    </script>
 
-  <!-- 2) קונפיג של Supabase חייב להופיע לפני app.js -->
-  <script>
-    // החלף לערכים שלך!
-    window.__SUPABASE_URL__ = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
-    window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A'; 
-  </script>
+    <!-- בזמן דיבוג – ביטול SW כדי למנוע קאש של גרסאות ישנות -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister()));
+      }
+    </script>
 
-  <!-- 3) טען את app.js כ-module ועם defer כדי שימתין ל-DOM -->
-  <script type="module" src="app.js" defer></script>
+    <style>
+      /* קוסמטיקה קטנה לטיימליין + כפתורי תכלת */
+      .btn-primary { background:#27a3f8; color:#fff; }
+      .btn-primary:hover { filter: brightness(0.95); }
+      .chip { @apply inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold; }
+      .scrollbar-hide::-webkit-scrollbar { display:none; }
+      .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+    </style>
+  </head>
 
-  <!-- (אופציונלי) בזמן דיבוג - בטל Service Worker כדי למנוע cache בעייתי -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      // השבתה זמנית בזמן דיבוג; תחזיר כשתרצה PWA
-      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
-    }
-  </script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-  <div class="max-w-xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-extrabold">ניהול משמרות – נונע</h1>
-      <div class="flex items-center gap-2">
-        <span id="whoami" class="text-sm text-gray-600 hidden"></span>
-        <button id="btnSignOut" class="hidden px-4 py-2 rounded-xl bg-gray-200">התנתק</button>
-      </div>
-    </header>
-
-    <!-- אזור התחברות -->
-    <section id="authSection" class="bg-white rounded-2xl shadow p-4">
-      <form id="loginForm" class="space-y-3">
-        <div class="text-xl font-bold mb-2">כניסה למערכת</div>
-        <div>
-          <label class="block text-sm mb-1">אימייל</label>
-          <input id="email" type="email" class="w-full border rounded-xl px-3 py-2 bg-white" placeholder="you@example.com">
+  <body class="bg-gray-100 min-h-screen">
+    <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+      <!-- Header -->
+      <header class="flex items-center justify-between">
+        <h1 class="text-3xl md:text-4xl font-extrabold">🧩 ניהול משמרות – נונע</h1>
+        <div class="flex items-center gap-2">
+          <span id="whoami" class="hidden text-sm text-gray-600"></span>
+          <button id="btnSignOut" class="hidden rounded-xl px-4 py-2 bg-gray-200">התנתק</button>
         </div>
-        <div>
-          <label class="block text-sm mb-1">סיסמה</label>
-          <input id="password" type="password" class="w-full border rounded-xl px-3 py-2 bg-white" placeholder="••••••••">
+      </header>
+
+      <!-- התחברות -->
+      <section id="authSection" class="bg-white rounded-2xl shadow p-4 md:p-6">
+        <form id="loginForm" class="space-y-3">
+          <div class="text-xl font-bold mb-2">כניסה למערכת</div>
+          <div>
+            <label class="block text-sm mb-1">אימייל</label>
+            <input id="email" type="email" class="w-full border rounded-xl px-3 py-2 bg-white" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">סיסמה</label>
+            <input id="password" type="password" class="w-full border rounded-xl px-3 py-2 bg-white" placeholder="••••••••" />
+          </div>
+          <button id="btnSignIn" type="submit" class="w-full btn-primary rounded-xl px-4 py-2 font-semibold">
+            כניסה
+          </button>
+        </form>
+      </section>
+
+      <!-- פאנל עובד -->
+      <section id="employeeSection" class="hidden space-y-4">
+        <!-- הגשת זמינות -->
+        <div class="bg-white rounded-2xl shadow p-4">
+          <div class="text-lg font-bold mb-2">הגשת זמינות לשבוע</div>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div>
+              <label class="block text-sm mb-1">שבוע שמתחיל (ראשון)</label>
+              <input id="avWeekStart" type="date" class="w-full border rounded-xl px-3 py-2 bg-white" />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">יום</label>
+              <select id="avDay" class="w-full border rounded-xl px-3 py-2 bg-white">
+                <option value="0">ראשון</option><option value="1">שני</option><option value="2">שלישי</option>
+                <option value="3">רביעי</option><option value="4">חמישי</option><option value="5" disabled>שישי (סגור)</option>
+                <option value="6">שבת</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">משבצת</label>
+              <select id="avSlot" class="w-full border rounded-xl px-3 py-2 bg-white">
+                <option value="lunch">צהריים (11–17)</option>
+                <option value="dinner">ערב (17–23)</option>
+                <option value="long">ארוכה (12–23)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">הערה</label>
+              <input id="avNote" class="w-full border rounded-xl px-3 py-2 bg-white" placeholder="למשל: מעדיף להתחיל ב-12:30" />
+            </div>
+            <div class="flex items-end">
+              <button id="btnSubmitAvailability" class="btn-primary w-full rounded-xl px-4 py-2 font-semibold">שמור זמינות</button>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">דד-ליין: שישי 14:00 לשבוע הבא.</p>
         </div>
-        <button id="btnSignIn" type="submit" class="w-full px-4 py-2 rounded-xl font-semibold text-white" style="background:#1da1f2">
-          כניסה
-        </button>
-      </form>
-    </section>
 
-    <!-- אזורי האפליקציה (מוסתרים עד אחרי התחברות) -->
-    <section id="managerSection" class="hidden mt-6 bg-white rounded-2xl shadow p-4">
-      <!-- כאן ייטען ממשק המנהל -->
-      <div class="text-lg font-bold mb-2">פאנל מנהל</div>
-      <div id="managerApp"></div>
-    </section>
+        <!-- המשמרות שלי -->
+        <div class="bg-white rounded-2xl shadow p-4">
+          <div class="text-lg font-bold mb-2">המשמרות שלי</div>
+          <div id="myShifts" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
 
-    <section id="employeeSection" class="hidden mt-6 bg-white rounded-2xl shadow p-4">
-      <!-- כאן ייטען ממשק העובד -->
-      <div class="text-lg font-bold mb-2">פאנל עובד</div>
-      <div id="employeeApp"></div>
-    </section>
-  </div>
-</body>
+      <!-- פאנל מנהל -->
+      <section id="managerSection" class="hidden space-y-5">
+        <!-- פתיחת שבוע / שמירה / מחיקה -->
+        <div class="bg-white rounded-2xl shadow p-4">
+          <div class="text-lg font-bold mb-3">שבוע עבודה</div>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div>
+              <label class="block text-sm mb-1">שבוע שמתחיל (ראשון)</label>
+              <input id="wkWeekStart" type="date" class="w-full border rounded-xl px-3 py-2 bg-white" />
+            </div>
+            <div class="flex items-end">
+              <button id="btnCreateDraftWeek" class="btn-primary w-full rounded-xl px-4 py-2 font-semibold">צור/טען טיוטה</button>
+            </div>
+            <div class="flex items-end">
+              <button id="btnPublishWeek" class="rounded-xl px-4 py-2 font-semibold bg-green-600 text-white">פרסם (לצד עובד)</button>
+            </div>
+            <div class="flex items-end">
+              <button id="btnDeleteWeek" class="rounded-xl px-4 py-2 font-semibold bg-red-600 text-white">מחק שבוע</button>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">שבוע נשמר כ״טיוטה״ עד פרסום. ניתן למחוק ולהתחיל מחדש.</p>
+        </div>
+
+        <!-- פס ימים – גלילה אופקית -->
+        <div class="bg-white rounded-2xl shadow p-4">
+          <div class="text-lg font-bold mb-3">ימי השבוע</div>
+          <div id="daysScroller" class="flex gap-3 overflow-x-auto scrollbar-hide"></div>
+        </div>
+
+        <!-- קונסולת שיבוץ ליום נבחר -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- קלטי שיבוץ -->
+          <div class="bg-white rounded-2xl shadow p-4 space-y-4">
+            <div class="text-lg font-bold">שיבוץ משמרת</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm mb-1">תאריך</label>
+                <input id="mgrDate" type="date" class="w-full border rounded-xl px-3 py-2 bg-white" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1">משבצת</label>
+                <select id="mgrSlot" class="w-full border rounded-xl px-3 py-2 bg-white">
+                  <option value="lunch">צהריים</option>
+                  <option value="dinner">ערב</option>
+                  <option value="long">ארוכה</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm mb-1">עובד (זמין למשבצת)</label>
+                <select id="mgrEmployee" class="w-full border rounded-xl px-3 py-2 bg-white"></select>
+                <div class="text-xs text-gray-500 mt-1">מוצגים רק עובדים שסימנו זמינות למשבצת ביום זה.</div>
+              </div>
+              <div>
+                <label class="block text-sm mb-1">שעת התחלה</label>
+                <input id="mgrStart" type="time" class="w-full border rounded-xl px-3 py-2 bg-white" value="11:00" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1">שעת סיום</label>
+                <input id="mgrEnd" type="time" class="w-full border rounded-xl px-3 py-2 bg-white" value="17:00" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1">רכב (לשליחים)</label>
+                <select id="mgrVehicle" class="w-full border rounded-xl px-3 py-2 bg-white">
+                  <option value="">—</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button id="btnAssign" class="btn-primary rounded-xl px-4 py-2 font-semibold">שבץ עובד</button>
+              <div class="flex items-center gap-2">
+                <input id="adHocName" placeholder="הוסף עובד חדש בשם חופשי" class="border rounded-xl px-3 py-2 bg-white w-48">
+                <button id="btnAddAdHoc" class="rounded-xl px-3 py-2 bg-gray-200">הוסף</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- תצוגת יום – רשימת שעות -> שמות -->
+          <div class="bg-white rounded-2xl shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-lg font-bold">
+                שיבוצים ליום <span id="dayTitle" class="font-extrabold"></span>
+              </div>
+              <div class="flex gap-2">
+                <button id="btnPrevDay" class="rounded-xl px-3 py-2 bg-gray-200">יום קודם</button>
+                <button id="btnNextDay" class="rounded-xl px-3 py-2 bg-gray-200">יום הבא</button>
+              </div>
+            </div>
+            <div id="dayGrid" class="space-y-2 text-sm">
+              <div class="text-gray-500">אין נתונים.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- קובץ האפליקציה (טעינה אחת) -->
+    <script type="module" src="app.js"></script>
+  </body>
 </html>
