@@ -35,11 +35,20 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue"
 .quick-add { display:flex; gap:.5rem; margin-top:.5rem; }
 .quick-add input { flex:1; }
 
-/* ===== Timeline ===== */
-.timeline { position: relative; width: 100%; overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; }
-.time-grid { display:flex; gap:0; border-bottom:1px solid #e5e7eb; background:#f8fafc; }
-.time-grid .tick { min-width:80px; border-left:1px dashed #e5e7eb; font-size:.75rem; color:#64748b; text-align:center; padding:.35rem 0; }
-.bars { position: relative; min-height: 220px; }
-.bar { position:absolute; height:36px; background:#0ea5e920; border:1px solid #0284c7; border-radius:10px; padding:4px 8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+/* ===== Timeline (VERTICAL) ===== */
+.timeline { position: relative; width: 100%; border:1px solid #e5e7eb; border-radius:12px; display:flex; height: 720px; background:#fff; overflow: hidden; }
+.time-grid { position: relative; width: 72px; border-inline-end:1px solid #e5e7eb; background:#f8fafc; }
+.tick {
+  position:absolute; left:0; right:0; height:1px; background:#e5e7eb;
+}
+.tick-label {
+  position:absolute; right:6px; transform:translateY(-50%); font-size:.75rem; color:#64748b;
+}
+.bars { position: relative; flex:1; }
+.bar {
+  position:absolute; left:10px; right:10px;
+  background:#0ea5e920; border:1px solid #0284c7; border-radius:10px;
+  padding:4px 8px; display:flex; align-items:center; gap:6px; overflow:hidden;
+}
 .bar .name { font-weight:800; color:#075985; }
-.bar .time { font-size:.75rem; color:#1f2937; }
+.bar .time { font-size:.75rem; color:#1f2937; margin-inline-start:auto; }
