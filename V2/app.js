@@ -1,9 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-/* ===== קונפיגורציה – עדכן ===== */
+/* ===== הגדרות Supabase — עדכן בפרויקט שלך ===== */
 const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'shifts' } });
 window.supa = supabase;
 
@@ -14,16 +13,15 @@ const managerPanel  = document.getElementById('managerPanel');
 const whoami        = document.getElementById('whoami');
 const btnSignOut    = document.getElementById('btnSignOut');
 
+/* יצירת שבוע */
 const weekStartInp  = document.getElementById('weekStart');
 const btnOpenWeek   = document.getElementById('btnOpenWeek');
 const btnReloadWeek = document.getElementById('btnReloadWeek');
 const weekScroller  = document.getElementById('weekScroller');
-
-/* אלמנטים דינמיים למנהל (ניצור אותם בקוד) */
 let weekStatusBadge = null;
 let btnDeleteWeek   = null;
 
-/* עובד */
+/* עובד — זמינות */
 const avWeekStart = document.getElementById('avWeekStart');
 const avDay       = document.getElementById('avDay');
 const avSlot      = document.getElementById('avSlot');
@@ -31,28 +29,26 @@ const avNote      = document.getElementById('avNote');
 const btnSubmitAvailability = document.getElementById('btnSubmitAvailability');
 const myShiftsBox = document.getElementById('myShifts');
 
-/* מודלים */
+/* דיאלוגים */
 const empModal      = document.getElementById('employeeModal');
 const empModalTitle = document.getElementById('empModalTitle');
 const empModalBody  = document.getElementById('empModalBody');
-document.getElementById('closeEmpModal').onclick = () => empModal.close();
+document.getElementById('closeEmpModal')?.addEventListener('click', ()=>empModal.close());
 
 const availModal    = document.getElementById('availModal');
 const availTitle    = document.getElementById('availTitle');
 const availBody     = document.getElementById('availBody');
 const btnSaveAvail  = document.getElementById('btnSaveAvail');
-document.getElementById('closeAvailModal').onclick = () => availModal.close();
+document.getElementById('closeAvailModal')?.addEventListener('click', ()=>availModal.close());
 
-/* Timeline (אנכי) */
+/* Timeline */
 const timelineCard  = document.getElementById('timelineCard');
 const tlDayName     = document.getElementById('tlDayName');
-const timeGrid      = document.getElementById('timeGrid');
 const timelineBars  = document.getElementById('timelineBars');
-
 let _selectedDayISO = null;
 
 /* ===== התחברות ===== */
-document.getElementById('btnSignIn').addEventListener('click', async () => {
+document.getElementById('btnSignIn')?.addEventListener('click', async () => {
   const email = (document.getElementById('email').value || '').trim();
   const password = document.getElementById('password').value || '';
   const btn = document.getElementById('btnSignIn');
@@ -65,8 +61,7 @@ document.getElementById('btnSignIn').addEventListener('click', async () => {
     btn.disabled = false; btn.textContent = 'כניסה';
   }
 });
-
-btnSignOut.addEventListener('click', async () => {
+btnSignOut?.addEventListener('click', async () => {
   await supabase.auth.signOut();
   location.reload();
 });
@@ -77,20 +72,20 @@ async function afterAuth() {
   if (error) return alert(error.message);
   if (!user) return;
 
-  whoami.classList.remove('hidden');
-  whoami.textContent = user.email || user.id;
-  btnSignOut.classList.remove('hidden');
-  authSection.classList.add('hidden');
+  whoami?.classList.remove('hidden');
+  if (whoami) whoami.textContent = user.email || user.id;
+  btnSignOut?.classList.remove('hidden');
+  authSection?.classList.add('hidden');
 
   const { data: prof, error: perr } = await supabase
-    .from('user_profiles')
+    .from('user_profiles') // shifts.user_profiles כי מוגדר schema='shifts'
     .select('app_role, employee_id')
     .eq('user_id', user.id)
     .maybeSingle();
   if (perr) return alert('שגיאת פרופיל: ' + perr.message);
 
   if (prof?.app_role === 'manager') {
-    managerPanel.classList.remove('hidden');
+    managerPanel?.classList.remove('hidden');
     weekStartInp.value = isoOfUpcomingSunday();
     bindManager();
     if (prof?.employee_id) initEmployee(prof.employee_id);
@@ -100,12 +95,12 @@ async function afterAuth() {
   }
 }
 
-/* ===== תצוגת עובד ===== */
+/* ===== אזור עובד ===== */
 function initEmployee(employeeId) {
-  employeePanel.classList.remove('hidden');
+  employeePanel?.classList.remove('hidden');
   avWeekStart.value = isoOfUpcomingSunday();
 
-  btnSubmitAvailability.onclick = async () => {
+  btnSubmitAvailability?.addEventListener('click', async () => {
     const week_start = avWeekStart.value;
     const day_of_week = Number(avDay.value);
     const slot = avSlot.value;
@@ -121,12 +116,13 @@ function initEmployee(employeeId) {
     if (error) return alert('שגיאה בשמירת זמינות: ' + error.message);
     alert('הזמינות נשמרה ✅');
     await refreshMyShifts();
-  };
+  });
 
   refreshMyShifts();
 }
 
 async function refreshMyShifts() {
+  if (!myShiftsBox) return;
   myShiftsBox.innerHTML = '';
   const { data: rows, error } = await supabase
     .from('shift_assignments')
@@ -147,33 +143,29 @@ async function refreshMyShifts() {
   });
 }
 
-/* ===== מנהל ===== */
+/* ===== אזור מנהל ===== */
 function bindManager() {
-  // הזרקת תג סטטוס וכפתור מחיקה ליד כפתורי השבוע
   injectWeekControls();
 
-  btnOpenWeek.onclick = async () => {
+  btnOpenWeek?.addEventListener('click', async () => {
     const ws = weekStartInp.value;
     if (!ws) return alert('בחר תאריך תחילת שבוע (יום ראשון)');
 
-    // 1) upsert לרוסטר כטיוטה
     await upsertWeeklyRoster(ws, 'draft');
 
-    // 2) יצירת משמרות לשבוע ע"י RPC
     const { error } = await supabase.rpc('generate_weekly_roster', { p_week_start: ws });
     if (error) return alert('שגיאה ביצירת שבוע: ' + error.message);
 
-    btnReloadWeek.classList.remove('hidden');
+    btnReloadWeek?.classList.remove('hidden');
     await loadWeek(ws);
-  };
+  });
 
-  btnReloadWeek.onclick = async () => {
+  btnReloadWeek?.addEventListener('click', async () => {
     if (!weekStartInp.value) return;
     await loadWeek(weekStartInp.value);
-  };
+  });
 
-  // מחיקת שבוע
-  btnDeleteWeek.onclick = async () => {
+  btnDeleteWeek?.addEventListener('click', async () => {
     const ws = weekStartInp.value;
     if (!ws) return alert('בחר תאריך תחילת שבוע');
     if (!confirm('למחוק את שבוע העבודה (כולל כל השיבוצים) ולהתחיל מחדש?')) return;
@@ -182,21 +174,20 @@ function bindManager() {
       alert('השבוע נמחק. אפשר לפתוח מחדש.');
       weekScroller.innerHTML = '';
       timelineBars.innerHTML = '';
-      toggleWeekStatus(null); // אין סטטוס
+      toggleWeekStatus(null);
     } catch (e) {
       alert('שגיאה במחיקת שבוע: ' + (e.message || e));
     }
-  };
+  });
 }
 
-/* ===== שליטה על סטטוס שבוע (טיוטה) ===== */
+/* — סטטוס שבוע — */
 function injectWeekControls() {
-  if (weekStatusBadge && btnDeleteWeek) return; // כבר קיים
-  // מוצא את הקונטיינר שבו הכפתורים נמצאים (בכרטיס "יצירת שבוע")
+  if (weekStatusBadge && btnDeleteWeek) return;
   const card = weekStartInp.closest('.card');
   const grid = card.querySelector('.grid');
   const ctrlWrap = document.createElement('div');
-  ctrlWrap.className = 'flex items-end gap-2';
+  ctrlWrap.className = 'flex items-end gap-2 col-span-12 md:col-span-4';
 
   weekStatusBadge = document.createElement('span');
   weekStatusBadge.className = 'pill';
@@ -219,13 +210,9 @@ async function getWeeklyRoster(ws) {
     .maybeSingle();
   return data || null;
 }
-
-async function upsertWeeklyRoster(ws, status = 'draft') {
-  await supabase
-    .from('weekly_rosters')
-    .upsert({ week_start: ws, status }, { onConflict: 'week_start' });
+async function upsertWeeklyRoster(ws, status='draft') {
+  await supabase.from('weekly_rosters').upsert({ week_start: ws, status }, { onConflict:'week_start' });
 }
-
 function toggleWeekStatus(roster) {
   if (!weekStatusBadge) return;
   if (!roster) {
@@ -240,12 +227,10 @@ function toggleWeekStatus(roster) {
   weekStatusBadge.style.color = st === 'draft' ? '#075985' : '#166534';
 }
 
-/* מחיקת שבוע: מוחק שיבוצים -> משמרות -> רשומת weekly_rosters */
 async function deleteWeekData(weekStartISO) {
   const from = weekStartISO;
   const to = addDaysISO(weekStartISO, 6);
 
-  // 1) שלוף כל ה-shifts בשבוע
   const { data: shifts, error: e1 } = await supabase
     .from('shifts')
     .select('id')
@@ -253,17 +238,14 @@ async function deleteWeekData(weekStartISO) {
   if (e1) throw e1;
   const ids = (shifts || []).map(s => s.id);
 
-  // 2) מחיקת כל השיבוצים לשבוע
   if (ids.length) {
     const { error: e2 } = await supabase.from('shift_assignments').delete().in('shift_id', ids);
     if (e2) throw e2;
   }
 
-  // 3) מחיקת המשמרות
   const { error: e3 } = await supabase.from('shifts').delete().gte('date', from).lte('date', to);
   if (e3) throw e3;
 
-  // 4) מחיקת רשומת הרוסטר
   const { error: e4 } = await supabase.from('weekly_rosters').delete().eq('week_start', weekStartISO);
   if (e4) throw e4;
 }
@@ -272,7 +254,6 @@ async function deleteWeekData(weekStartISO) {
 async function loadWeek(weekStartISO) {
   weekScroller.innerHTML = '';
 
-  // סטטוס שבוע
   const roster = await getWeeklyRoster(weekStartISO);
   toggleWeekStatus(roster);
 
@@ -281,8 +262,8 @@ async function loadWeek(weekStartISO) {
     .select('id, date, slot, planned_start, planned_end')
     .gte('date', weekStartISO)
     .lte('date', addDaysISO(weekStartISO, 6))
-    .order('date', { ascending: true })
-    .order('slot', { ascending: true });
+    .order('date', { ascending:true })
+    .order('slot', { ascending:true });
   if (error) {
     weekScroller.innerHTML = `<div class="text-red-600 p-3">${error.message}</div>`;
     return;
@@ -290,15 +271,15 @@ async function loadWeek(weekStartISO) {
 
   const byDay = new Map();
   shifts?.forEach(s => {
-    if (!byDay.has(s.date)) byDay.set(s.date, { date: s.date, slots: { lunch: null, dinner: null, long: null } });
+    if (!byDay.has(s.date)) byDay.set(s.date, { date:s.date, slots:{ lunch:null, dinner:null, long:null } });
     byDay.get(s.date).slots[s.slot] = s;
   });
 
   const ordered = [];
-  for (let i = 0; i < 7; i++) { if (i === 5) continue; ordered.push(addDaysISO(weekStartISO, i)); }
+  for (let i=0;i<7;i++){ if(i===5)continue; ordered.push(addDaysISO(weekStartISO,i)); }
 
   for (const d of ordered) {
-    const dayData = byDay.get(d) || { date: d, slots: { lunch: null, dinner: null, long: null } };
+    const dayData = byDay.get(d) || { date:d, slots:{ lunch:null, dinner:null, long:null } };
     const col = await renderDayColumn(dayData, weekStartISO);
     col.querySelector('.day-head').addEventListener('click', async () => {
       _selectedDayISO = dayData.date;
@@ -311,7 +292,7 @@ async function loadWeek(weekStartISO) {
   await renderTimeline(_selectedDayISO);
 }
 
-/* ===== בניית עמודת יום ===== */
+/* ===== עמודת יום ===== */
 async function renderDayColumn(dayData, weekStartISO) {
   const col = document.createElement('div');
   col.className = 'day-col';
@@ -332,11 +313,10 @@ async function renderDayColumn(dayData, weekStartISO) {
   for (const slot of ['lunch','dinner','long']) {
     await renderShiftBox(col.querySelector(`[data-slot="${slot}"]`), dayData, slot, weekStartISO);
   }
-
   return col;
 }
 
-/* ===== משבצת שיבוץ ===== */
+/* ===== משבצת ===== */
 async function renderShiftBox(container, dayData, slot, weekStartISO) {
   container.innerHTML = `
     <div class="shift-title">
@@ -387,7 +367,7 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
     selEl.disabled = false; btnEl.disabled = false;
   }
 
-  btnEl.onclick = async () => {
+  btnEl.addEventListener('click', async () => {
     const employee_id = selEl.value;
     if (!employee_id) return;
     const start_time = shiftRow.planned_start || '11:00';
@@ -398,9 +378,9 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
     if (error) return alert('שגיאת שיבוץ: ' + error.message);
     await refreshAssignmentsUI(listEl, shiftRow.id);
     if (_selectedDayISO === dayData.date) renderTimeline(dayData.date);
-  };
+  });
 
-  qaBtn.onclick = async () => {
+  qaBtn.addEventListener('click', async () => {
     const name = (qaName.value || '').trim();
     if (!name) return alert('כתוב שם מלא');
     const { data: ins, error } = await supabase.from('employees').insert({ full_name: name }).select('id').maybeSingle();
@@ -414,11 +394,11 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
     qaName.value = '';
     await refreshAssignmentsUI(listEl, shiftRow.id);
     if (_selectedDayISO === dayData.date) renderTimeline(dayData.date);
-  };
+  });
 
-  availBtn.onclick = async () => {
+  availBtn.addEventListener('click', async () => {
     await openAvailManager(dayData.date, slot, weekStartISO);
-  };
+  });
 }
 
 async function refreshAssignmentsUI(listEl, shift_id) {
@@ -432,29 +412,27 @@ async function refreshAssignmentsUI(listEl, shift_id) {
   if (!rows?.length) return (listEl.innerHTML = `<div class="kicker">אין שיבוצים למשבצת זו.</div>`);
 
   rows.forEach(r => {
-    const row = document.createElement('div');
-    row.className = 'assigned-row';
+    const row = document.createElement('div'); row.className = 'assigned-row';
 
     const left = document.createElement('div');
     const empBtn = document.createElement('button');
-    empBtn.className = 'emp-link';
-    empBtn.textContent = r.employee?.full_name || '—';
-    empBtn.onclick = () => openEmployeeCard(r.employee?.id);
+    empBtn.className = 'emp-link'; empBtn.textContent = r.employee?.full_name || '—';
+    empBtn.addEventListener('click', ()=>openEmployeeCard(r.employee?.id));
+
     const info = document.createElement('div');
     info.className = 'text-xs text-gray-600';
     info.textContent = `שעות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)}`;
     left.appendChild(empBtn); left.appendChild(info);
 
     const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-danger';
-    delBtn.textContent = 'הסר';
-    delBtn.onclick = async () => {
+    delBtn.className = 'btn btn-danger'; delBtn.textContent = 'הסר';
+    delBtn.addEventListener('click', async () => {
       if (!confirm(`להסיר את ${r.employee?.full_name || ''} מהמשמרת?`)) return;
       const { error: derr } = await supabase.from('shift_assignments').delete().eq('id', r.id);
       if (derr) return alert('שגיאת הסרה: ' + derr.message);
       await refreshAssignmentsUI(listEl, shift_id);
       if (_selectedDayISO) renderTimeline(_selectedDayISO);
-    };
+    });
 
     const wrap = document.createElement('div');
     wrap.className = 'flex items-center justify-between w-full';
@@ -464,14 +442,13 @@ async function refreshAssignmentsUI(listEl, shift_id) {
   });
 }
 
-/* ===== זמינות עם הערות ===== */
+/* ===== זמינות + הערות ===== */
 async function fetchAvailableWithNotes(isoDate, slot) {
   const dow = dayIndexFromISO(isoDate);
   const ws = weekStartFromISO(isoDate);
 
   const { data: av, error } = await supabase
-    .from('availability')
-    .select('employee_id, note')
+    .from('availability').select('employee_id, note')
     .eq('week_start', ws).eq('day_of_week', dow).eq('slot', slot);
   if (error) { console.error(error); return []; }
 
@@ -487,7 +464,6 @@ async function fetchAvailableWithNotes(isoDate, slot) {
   return (emps || []).map(e => ({ ...e, note: notesByEmp.get(e.id) || '' }));
 }
 
-/* ===== ניהול זמינות (מודל) ===== */
 let _availCtx = null;
 async function openAvailManager(isoDate, slot, weekStartISO) {
   _availCtx = { isoDate, slot, ws: weekStartISO };
@@ -500,8 +476,7 @@ async function openAvailManager(isoDate, slot, weekStartISO) {
 
   const dow = dayIndexFromISO(isoDate);
   const { data: av, error: e2 } = await supabase
-    .from('availability')
-    .select('employee_id, note')
+    .from('availability').select('employee_id, note')
     .eq('week_start', weekStartISO).eq('day_of_week', dow).eq('slot', slot);
   if (e2) { availBody.innerHTML = `<div class="text-red-600">${e2.message}</div>`; return; }
   const availSet = new Set(av.map(x => x.employee_id));
@@ -525,7 +500,7 @@ async function openAvailManager(isoDate, slot, weekStartISO) {
   availModal.showModal();
 }
 
-btnSaveAvail.onclick = async () => {
+btnSaveAvail?.addEventListener('click', async () => {
   if (!_availCtx) return availModal.close();
   const { isoDate, slot, ws } = _availCtx;
   const dow = dayIndexFromISO(isoDate);
@@ -533,8 +508,7 @@ btnSaveAvail.onclick = async () => {
   const toKeep = new Set(chks.filter(c=>c.checked).map(c=>c.getAttribute('data-id')));
 
   const { data: cur } = await supabase
-    .from('availability')
-    .select('employee_id')
+    .from('availability').select('employee_id')
     .eq('week_start', ws).eq('day_of_week', dow).eq('slot', slot);
   const curSet = new Set(cur?.map(x=>String(x.employee_id)) || []);
 
@@ -548,16 +522,14 @@ btnSaveAvail.onclick = async () => {
   }
   if (toDelete.length) {
     const { error } = await supabase
-      .from('availability')
-      .delete()
+      .from('availability').delete()
       .eq('week_start', ws).eq('day_of_week', dow).eq('slot', slot)
       .in('employee_id', toDelete);
     if (error) return alert('שגיאת מחיקה: ' + error.message);
   }
 
-  availModal.close();
-  alert('נשמר ✅');
-};
+  availModal.close(); alert('נשמר ✅');
+});
 
 /* ===== כרטיס עובד ===== */
 async function openEmployeeCard(employeeId) {
@@ -565,8 +537,7 @@ async function openEmployeeCard(employeeId) {
   const { data: e, error } = await supabase
     .from('employees')
     .select('full_name, phone, address, driver_license_verified, active')
-    .eq('id', employeeId)
-    .maybeSingle();
+    .eq('id', employeeId).maybeSingle();
   if (error) return alert(error.message);
   empModalTitle.textContent = e?.full_name || 'כרטיס עובד';
   empModalBody.innerHTML = `
@@ -578,119 +549,58 @@ async function openEmployeeCard(employeeId) {
   empModal.showModal();
 }
 
-/* ===== Timeline (VERTICAL lanes) =====
-   TL: 10:00–24:00; לכל עובד מסילה משלו, ללא חפיפות */
-const TL_START = 10;
-const TL_END   = 24;
-const TL_RANGE = TL_END - TL_START;
-
-function buildTimeGrid() {
-  timeGrid.innerHTML = '';
-  for (let h = TL_START; h <= TL_END; h++) {
-    const y = ((h - TL_START) / TL_RANGE) * 100;
-    const tick = document.createElement('div');
-    tick.className = 'tick';
-    tick.style.top = y + '%';
-    tick.style.height = '1px';
-    timeGrid.appendChild(tick);
-
-    const lbl = document.createElement('div');
-    lbl.className = 'tick-label';
-    lbl.style.top = y + '%';
-    lbl.textContent = (h < 10 ? '0' : '') + h + ':00';
-    timeGrid.appendChild(lbl);
-  }
-}
-buildTimeGrid();
-
+/* ===== Timeline חדש: שורות-עובד ===== */
 async function renderTimeline(isoDate) {
-  tlDayName.textContent = 'ציר־זמן · ' + new Date(isoDate).toLocaleDateString('he-IL',{weekday:'long', day:'2-digit', month:'2-digit'});
-  timelineCard.classList.remove('hidden');
+  tlDayName.textContent =
+    'שיבוצים ליום ' + new Date(isoDate).toLocaleDateString('he-IL',{weekday:'long', day:'2-digit', month:'2-digit'});
+  timelineCard?.classList.remove('hidden');
   timelineBars.innerHTML = '';
-  timelineBars.style.minWidth = '100%'; // יגדל לפי כמות עובדים
 
-  const { data: shifts } = await supabase
-    .from('shifts')
-    .select('id')
-    .eq('date', isoDate);
-
-  if (!shifts?.length) {
-    timelineBars.innerHTML = `<div class="kicker p-3">אין משמרות ליום זה.</div>`;
-    return;
-  }
+  const { data: shifts, error: e1 } = await supabase
+    .from('shifts').select('id').eq('date', isoDate);
+  if (e1) return (timelineBars.innerHTML = `<div class="text-red-600 p-3">${e1.message}</div>`);
+  if (!shifts?.length) return (timelineBars.innerHTML = `<div class="kicker p-3">אין משמרות ליום זה.</div>`);
 
   const ids = shifts.map(s => s.id);
-  let { data: assigns, error } = await supabase
+  const { data: assigns, error: e2 } = await supabase
     .from('shift_assignments')
-    .select('id, start_time, end_time, employee:employee_id(id, full_name)')
+    .select('id, start_time, end_time, shift_id, employee:employee_id(id, full_name)')
     .in('shift_id', ids);
-  if (error) {
-    timelineBars.innerHTML = `<div class="text-red-600 p-3">${error.message}</div>`;
-    return;
-  }
-  if (!assigns?.length) {
-    timelineBars.innerHTML = `<div class="kicker p-3">אין שיבוצים ליום זה.</div>`;
-    return;
-  }
+  if (e2) return (timelineBars.innerHTML = `<div class="text-red-600 p-3">${e2.message}</div>`);
+  if (!assigns?.length) return (timelineBars.innerHTML = `<div class="kicker p-3">אין שיבוצים ליום זה.</div>`);
 
-  // קיבוץ לפי עובד
   const byEmp = new Map();
-  assigns.forEach(a => {
+  for (const a of assigns) {
     const key = a.employee?.id || 'unknown';
-    if (!byEmp.has(key)) byEmp.set(key, { empId: key, name: a.employee?.full_name || '—', items: [] });
+    if (!byEmp.has(key)) byEmp.set(key, { name:a.employee?.full_name || '—', items:[] });
     byEmp.get(key).items.push(a);
-  });
+  }
 
-  // לכל עובד: earliest start → למיין לפי זה
-  const empArr = [...byEmp.values()].map(block => {
-    const minStart = block.items
-      .map(x => x.start_time || '23:59')
-      .sort()[0];
-    return { ...block, firstStart: minStart };
-  }).sort((a, b) => a.firstStart.localeCompare(b.firstStart));
+  const rows = [...byEmp.values()].map(v => {
+    const first = v.items.map(x => x.start_time || '23:59').sort()[0];
+    return { ...v, firstStart:first };
+  }).sort((a,b) => a.firstStart.localeCompare(b.firstStart));
 
-  // מיפוי מסילה לכל עובד
-  const laneWidth = 200; // px לכל עובד (ניתן לשינוי)
-  const gap = 12;
-  const totalWidth = empArr.length * (laneWidth + gap) + 20;
-  timelineBars.style.width = Math.max(totalWidth, timelineBars.clientWidth) + 'px';
+  for (const row of rows) {
+    const el = document.createElement('div'); el.className = 'emp-row';
+    const name = document.createElement('div'); name.className = 'emp-name'; name.textContent = row.name;
+    const chips = document.createElement('div'); chips.className = 'emp-chips';
 
-  // פונקציית קנה־מידה אנכית
-  const pctY = (h, m=0) => ((h + m/60) - TL_START) / TL_RANGE * 100;
-
-  // ציור כל המסילות: כל עובד מקבל "שורה אחת" (עמודה אופקית), וכל השיבוצים שלו באותה מסילה
-  empArr.forEach((block, laneIndex) => {
-    const laneLeft = 10 + laneIndex * (laneWidth + gap);
-
-    block.items.forEach(a => {
-      const [sh, sm] = (a.start_time || '11:00').split(':').map(Number);
-      const [eh, em] = (a.end_time   || '17:00').split(':').map(Number);
-      const top    = Math.max(0, pctY(sh, sm));
-      const bottom = Math.min(100, pctY(eh, em));
-      const height = Math.max(4, bottom - top);
-
-      const bar = document.createElement('div');
-      bar.className = 'bar';
-      bar.style.left = laneLeft + 'px';
-      bar.style.width = laneWidth + 'px';
-      bar.style.top = top + '%';
-      bar.style.height = height + '%';
-      bar.title = block.name;
-
-      bar.innerHTML = `
-        <span class="name">${block.name}</span>
-        <span class="time">${(a.start_time||'').slice(0,5)}–${(a.end_time||'').slice(0,5)}</span>
-      `;
-      timelineBars.appendChild(bar);
+    row.items.sort((a,b)=> (a.start_time||'').localeCompare(b.start_time||'')).forEach(a => {
+      const chip = document.createElement('span'); chip.className = 'chip';
+      chip.textContent = `${(a.start_time||'').slice(0,5)}–${(a.end_time||'').slice(0,5)}`;
+      chips.appendChild(chip);
     });
-  });
+
+    el.appendChild(name); el.appendChild(chips); timelineBars.appendChild(el);
+  }
 }
 
 /* ===== Utils ===== */
 function slotName(s){ return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה'); }
 function statusName(s){ return {planned:'מתוכנן',confirmed:'מאושר',canceled:'מבוטל'}[s]||s; }
 function isoOfUpcomingSunday(){
-  const d=new Date(); const day=(d.getDay()+0)%7; // 0=ראשון
+  const d=new Date(); const day=d.getDay(); // 0=א'
   const sun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-day);
   const z=sun.getTimezoneOffset()*60000; return new Date(sun - z).toISOString().slice(0,10);
 }
@@ -698,10 +608,9 @@ function addDaysISO(iso, days){
   const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+days);
   const z=d.getTimezoneOffset()*60000; return new Date(d - z).toISOString().slice(0,10);
 }
-function dayIndexFromISO(iso){ return new Date(iso+'T00:00:00').getDay(); } // 0=ראשון
+function dayIndexFromISO(iso){ return new Date(iso+'T00:00:00').getDay(); } // 0=א'
 function weekStartFromISO(iso){
-  const d = new Date(iso+'T00:00:00');
-  const sun = new Date(d); sun.setDate(d.getDate() - d.getDay());
+  const d = new Date(iso+'T00:00:00'); const sun = new Date(d); sun.setDate(d.getDate()-d.getDay());
   const z=sun.getTimezoneOffset()*60000; return new Date(sun - z).toISOString().slice(0,10);
 }
 function withinDeadline(weekStartISO){
