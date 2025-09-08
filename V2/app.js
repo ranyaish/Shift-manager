@@ -2,8 +2,8 @@
 // טעינת Supabase
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL  = window.__SUPABASE_URL__  || 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON = window.__SUPABASE_ANON_KEY__ || 'YOUR-ANON-PUBLIC-KEY';
+const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
 
 // שים לב: אנחנו עובדים על סכימת shifts
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { db: { schema: 'shifts' } });
