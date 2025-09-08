@@ -1,9 +1,22 @@
-// app.js (fixed login wiring)
-// טעינת Supabase
+// app.js – safe Supabase bootstrap
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
+// אסוף קונפיג ממספר מקורות אפשריים כדי לא ליפול על שם גלובלי לא קיים
+const SUPABASE_URL =
+  (typeof window !== 'undefined' && (window.__SUPABASE_URL__ || window.SUPABASE_URL)) || '';
+
+const SUPABASE_ANON =
+  (typeof window !== 'undefined' && (window.__SUPABASE_ANON_KEY__ || window.SUPABASE_ANON)) || '';
+
+// בדיקת תקינות – אם חסר משהו, נעצור עם הודעה ברורה
+if (!SUPABASE_URL || !SUPABASE_ANON) {
+  alert('Missing Supabase config: URL or ANON key not found on window.__SUPABASE_*');
+  // לוג דיבוג
+  console.error('Got config:', { SUPABASE_URL, hasAnon: !!SUPABASE_ANON });
+}
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { db: { schema: 'shifts' } });
+window.supa = supabase; // דיבוג
 
 // שים לב: אנחנו עובדים על סכימת shifts
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { db: { schema: 'shifts' } });
