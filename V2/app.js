@@ -5,7 +5,7 @@ const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'shifts' } });
-window.supa = supabase;
+window.supa = supabase; // דיבוג בקונסול
 
 // ====== DOM ======
 const authSection   = document.getElementById('authSection');
@@ -39,7 +39,7 @@ const availBody     = document.getElementById('availBody');
 const btnSaveAvail  = document.getElementById('btnSaveAvail');
 document.getElementById('closeAvailModal').onclick = () => availModal.close();
 
-// Timeline
+// Timeline (אנכי)
 const timelineCard  = document.getElementById('timelineCard');
 const tlDayName     = document.getElementById('tlDayName');
 const timeGrid      = document.getElementById('timeGrid');
@@ -89,7 +89,7 @@ async function afterAuth() {
     managerPanel.classList.remove('hidden');
     weekStartInp.value = isoOfUpcomingSunday();
     bindManager();
-    if (prof?.employee_id) initEmployee(prof.employee_id);
+    if (prof?.employee_id) initEmployee(prof.employee_id); // אופציונלי: גם תצוגת עובד לעצמי
   } else {
     if (!prof?.employee_id) return alert('לא נמצא כרטיס עובד לחשבון זה.');
     initEmployee(prof.employee_id);
@@ -186,7 +186,7 @@ async function loadWeek(weekStartISO) {
   for (const d of ordered) {
     const dayData = byDay.get(d) || { date: d, slots: { lunch: null, dinner: null, long: null } };
     const col = await renderDayColumn(dayData, weekStartISO);
-    // בחירת יום לטיימליין
+    // לחיצה על כותרת יום → טיימליין לאותו יום
     col.querySelector('.day-head').addEventListener('click', async () => {
       _selectedDayISO = dayData.date;
       await renderTimeline(dayData.date);
@@ -472,18 +472,28 @@ async function openEmployeeCard(employeeId) {
   empModal.showModal();
 }
 
-/* ===== Timeline logic =====
-   טווח ברירת־מחדל: 10:00–24:00 (לפי הדרישה) */
-const TL_START = 10;  // שעה התחלתית
-const TL_END   = 24;  // שעה סופית
+/* ===== Timeline (VERTICAL) =====
+   טווח ברירת־מחדל: 10:00–24:00 (ניתן לשינוי) */
+const TL_START = 10;   // שעה התחלתית
+const TL_END   = 24;   // שעה סופית
+const TL_RANGE = TL_END - TL_START;
 
 function buildTimeGrid() {
   timeGrid.innerHTML = '';
+  // קווי שעה כל שעה עגולה
   for (let h = TL_START; h <= TL_END; h++) {
-    const t = document.createElement('div');
-    t.className = 'tick';
-    t.textContent = (h<10?'0':'') + h + ':00';
-    timeGrid.appendChild(t);
+    const y = ((h - TL_START) / TL_RANGE) * 100;
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.top = y + '%';
+    tick.style.height = '1px';
+    timeGrid.appendChild(tick);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'tick-label';
+    lbl.style.top = y + '%';
+    lbl.textContent = (h < 10 ? '0' : '') + h + ':00';
+    timeGrid.appendChild(lbl);
   }
 }
 buildTimeGrid();
@@ -493,23 +503,23 @@ async function renderTimeline(isoDate) {
   timelineCard.classList.remove('hidden');
   timelineBars.innerHTML = '';
 
-  // שלוף כל השיבוצים של אותו יום (כל הסלוטים)
+  // כל המשמרות של היום
   const { data: shifts } = await supabase
     .from('shifts')
-    .select('id, date, planned_start, planned_end')
+    .select('id, date')
     .eq('date', isoDate);
 
   if (!shifts?.length) {
     timelineBars.innerHTML = `<div class="kicker p-3">אין משמרות ליום זה.</div>`;
     return;
   }
-  const shiftIds = shifts.map(s => s.id);
 
-  const { data: assigns, error } = await supabase
+  const ids = shifts.map(s => s.id);
+  let { data: assigns, error } = await supabase
     .from('shift_assignments')
     .select('id, start_time, end_time, employee:employee_id(full_name)')
-    .in('shift_id', shiftIds)
-    .order('start_time');
+    .in('shift_id', ids);
+
   if (error) {
     timelineBars.innerHTML = `<div class="text-red-600 p-3">${error.message}</div>`;
     return;
@@ -519,22 +529,28 @@ async function renderTimeline(isoDate) {
     return;
   }
 
-  // ציור פס לכל שיבוץ
-  const scale = (h, m=0) => ((h + m/60) - TL_START) / (TL_END - TL_START) * 100;
+  // מיין לפי שעת התחלה
+  assigns.sort((a,b) => (a.start_time||'').localeCompare(b.start_time||''));
+
+  // קנה־מידה אנכי (אחוזים)
+  const pctY = (h, m=0) => ((h + m/60) - TL_START) / TL_RANGE * 100;
+
   assigns.forEach((a, idx) => {
     const [sh, sm] = (a.start_time || '11:00').split(':').map(Number);
     const [eh, em] = (a.end_time   || '17:00').split(':').map(Number);
-    const left = Math.max(0, scale(sh, sm));
-    const right = Math.min(100, scale(eh, em));
-    const width = Math.max(3, right - left); // מינימום רוחב
+    const top    = Math.max(0, pctY(sh, sm));
+    const bottom = Math.min(100, pctY(eh, em));
+    const height = Math.max(4, bottom - top);
 
     const bar = document.createElement('div');
     bar.className = 'bar';
-    bar.style.left = left + '%';
-    bar.style.width = width + '%';
-    bar.style.top = (idx * 40 + 8) + 'px'; // שורות אחת מתחת לשנייה
-    bar.innerHTML = `<span class="name">${a.employee?.full_name || '—'}</span>
-                     <span class="time">${(a.start_time||'').slice(0,5)}–${(a.end_time||'').slice(0,5)}</span>`;
+    bar.style.top = top + '%';
+    bar.style.height = height + '%';
+
+    bar.innerHTML = `
+      <span class="name">${a.employee?.full_name || '—'}</span>
+      <span class="time">${(a.start_time||'').slice(0,5)}–${(a.end_time||'').slice(0,5)}</span>
+    `;
     timelineBars.appendChild(bar);
   });
 }
