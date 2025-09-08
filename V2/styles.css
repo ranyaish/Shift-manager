@@ -17,7 +17,8 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue"
 /* week scroller */
 .week-scroller { display:flex; gap:12px; overflow:auto; padding-bottom:6px; }
 .day-col { min-width: 300px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; }
-.day-head { padding:.7rem .9rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; }
+.day-head { padding:.7rem .9rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.day-head:hover { background:#f8fafc; }
 .shift-box { padding:.75rem; border-bottom:1px dashed #e5e7eb; }
 .shift-box:last-child { border-bottom:none; }
 .shift-title { display:flex; align-items:center; gap:.4rem; font-weight:800; }
@@ -33,3 +34,12 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue"
 /* אזור ההוספה המהירה במשבצת */
 .quick-add { display:flex; gap:.5rem; margin-top:.5rem; }
 .quick-add input { flex:1; }
+
+/* ===== Timeline ===== */
+.timeline { position: relative; width: 100%; overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; }
+.time-grid { display:flex; gap:0; border-bottom:1px solid #e5e7eb; background:#f8fafc; }
+.time-grid .tick { min-width:80px; border-left:1px dashed #e5e7eb; font-size:.75rem; color:#64748b; text-align:center; padding:.35rem 0; }
+.bars { position: relative; min-height: 220px; }
+.bar { position:absolute; height:36px; background:#0ea5e920; border:1px solid #0284c7; border-radius:10px; padding:4px 8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+.bar .name { font-weight:800; color:#075985; }
+.bar .time { font-size:.75rem; color:#1f2937; }
