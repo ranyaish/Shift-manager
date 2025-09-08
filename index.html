@@ -8,30 +8,23 @@
     <meta name="theme-color" content="#111827" />
     <link rel="icon" type="image/png" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-
-    <!-- ⚠️ בזמן דיבוג מבטלים SW כדי לא להיתקע על קאש -->
-    <!--
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
-      }
-    </script>
-    -->
-
     <style>
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; }
-      .card { @apply bg-white rounded-2xl shadow p-4 md:p-6; }
-      .btn  { @apply px-4 py-2 rounded-xl font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed; }
+      .card { @apply bg-white rounded-2xl shadow p-5 md:p-6; }
+      .btn  { @apply px-4 py-2 rounded-xl font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed transition; }
       .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white; }
-      .btn-danger  { @apply bg-red-600 hover:bg-red-700 text-white; }
-      .btn-gray    { @apply bg-gray-200 hover:bg-gray-300; }
+      .btn-ghost   { @apply bg-white hover:bg-gray-50 border border-gray-300; }
+      .btn-danger  { @apply bg-rose-600 hover:bg-rose-700 text-white; }
       .tag { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100; }
-      .input, select { @apply w-full border rounded-xl px-3 py-2 bg-white; }
-      .grid-col { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
-      .sec-title { @apply text-lg font-bold mb-2; }
+      .input, select, textarea { @apply w-full border rounded-xl px-3 py-2 bg-white; }
+      .sec-title { @apply text-lg font-bold mb-3; }
+      .toolbar { @apply sticky top-0 z-40 bg-gray-100/80 backdrop-blur supports-[backdrop-filter]:bg-gray-100/60 border-b; }
+      .kicker { @apply text-xs text-gray-500; }
+      .list-row { @apply p-3 bg-white rounded-xl border hover:border-indigo-300 transition; }
+      .pill { @apply inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-semibold; }
     </style>
 
-    <!-- 🔧 קונפיגורציה – החליפו בערכים מה-API Settings של הפרויקט שלכם -->
+    <!-- החלף לערכי הפרויקט שלך -->
     <script>
       window.__SUPABASE_URL__ = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
       window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
@@ -39,19 +32,31 @@
   </head>
 
   <body class="bg-gray-100 min-h-screen">
-    <div class="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-      <header class="flex items-center justify-between">
-        <h1 class="text-2xl md:text-3xl font-extrabold">🧩 ניהול משמרות – נונע</h1>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="max-w-6xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl md:text-3xl font-extrabold">🧩 ניהול משמרות – נונע</span>
+          <span class="hidden md:inline kicker">גרסת פיתוח</span>
+        </div>
         <div class="flex items-center gap-2">
           <span id="whoami" class="text-sm text-gray-600 hidden"></span>
-          <button id="btnSignOut" class="btn btn-gray hidden">התנתק</button>
+          <button id="btnSignOut" class="btn btn-ghost hidden">התנתק</button>
         </div>
-      </header>
+      </div>
+    </div>
 
-      <!-- 🔐 התחברות -->
+    <div class="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+
+      <!-- התחברות -->
       <section id="authSection" class="card">
-        <div class="sec-title">התחברות</div>
-        <div class="grid md:grid-cols-3 gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xl font-extrabold mb-1">כניסה למערכת</div>
+            <div class="kicker">הזן אימייל וסיסמה</div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 mt-4">
           <div>
             <label class="block text-sm mb-1">אימייל</label>
             <input id="email" class="input" type="email" placeholder="you@example.com" />
@@ -66,25 +71,26 @@
         </div>
       </section>
 
-      <!-- 👷 פאנל עובד -->
+      <!-- עובד -->
       <section id="employeeSection" class="hidden space-y-4">
         <div class="card">
-          <div class="sec-title">הגשת זמינות לשבוע</div>
-          <div class="grid-col">
+          <div class="flex items-center justify-between mb-2">
             <div>
+              <div class="sec-title m-0">הגשת זמינות לשבוע</div>
+              <div class="kicker">דד-ליין: שישי 14:00 לפני תחילת השבוע</div>
+            </div>
+            <span class="pill">📅 עובד</span>
+          </div>
+          <div class="grid md:grid-cols-5 gap-3">
+            <div class="md:col-span-2">
               <label class="block text-sm mb-1">שבוע שמתחיל ביום ראשון</label>
               <input id="avWeekStart" type="date" class="input" />
             </div>
             <div>
-              <label class="block text-sm mb-1">יום בשבוע</label>
+              <label class="block text-sm mb-1">יום</label>
               <select id="avDay" class="input">
-                <option value="0">ראשון</option>
-                <option value="1">שני</option>
-                <option value="2">שלישי</option>
-                <option value="3">רביעי</option>
-                <option value="4">חמישי</option>
-                <option value="5" disabled>שישי (סגור)</option>
-                <option value="6">שבת</option>
+                <option value="0">ראשון</option><option value="1">שני</option><option value="2">שלישי</option>
+                <option value="3">רביעי</option><option value="4">חמישי</option><option value="5" disabled>שישי (סגור)</option><option value="6">שבת</option>
               </select>
             </div>
             <div>
@@ -97,28 +103,36 @@
             </div>
             <div>
               <label class="block text-sm mb-1">הערה (אופציונלי)</label>
-              <input id="avNote" class="input" placeholder="למשל: מעדיף להגיע ב-12:30" />
-            </div>
-            <div class="flex items-end">
-              <button id="btnSubmitAvailability" class="btn btn-primary w-full">שמור זמינות</button>
+              <input id="avNote" class="input" placeholder="למשל: מעדיף 12:30" />
             </div>
           </div>
-          <p class="text-xs text-gray-500 mt-2">דד-ליין הגשה: שישי 14:00 (בצד לקוח; ניתן לשינוי בהמשך).</p>
+          <div class="mt-3 flex items-center justify-end gap-2">
+            <button id="btnSubmitAvailability" class="btn btn-primary">שמור זמינות</button>
+          </div>
         </div>
 
         <div class="card">
-          <div class="sec-title">המשמרות שלי</div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="sec-title m-0">המשמרות שלי</div>
+          </div>
           <div id="myShifts" class="space-y-2 text-sm"></div>
         </div>
       </section>
 
-      <!-- 🧑‍💼 פאנל מנהל -->
+      <!-- מנהל -->
       <section id="managerSection" class="hidden space-y-4">
+
         <!-- יצירת שבוע -->
         <div class="card">
-          <div class="sec-title">יצירת שבוע חדש</div>
-          <div class="grid-col">
+          <div class="flex items-center justify-between mb-2">
             <div>
+              <div class="sec-title m-0">יצירת שבוע חדש</div>
+              <div class="kicker">מייצר את 6 ימי העבודה והמשבצות לשבוע</div>
+            </div>
+            <span class="pill">👑 מנהל</span>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
               <label class="block text-sm mb-1">שבוע שמתחיל ביום ראשון</label>
               <input id="wkWeekStart" type="date" class="input" />
             </div>
@@ -129,11 +143,11 @@
         </div>
 
         <!-- שיבוץ משמרות -->
-        <div class="card space-y-4">
-          <div class="sec-title">שיבוץ משמרות בשבוע</div>
-          <div class="grid-col">
-            <div>
-              <label class="block text-sm mb-1">בחר תאריך (בתוך השבוע)</label>
+        <div class="card space-y-3">
+          <div class="sec-title">שיבוץ משמרות</div>
+          <div class="grid md:grid-cols-6 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-sm mb-1">תאריך (בתוך השבוע)</label>
               <input id="mgrDate" type="date" class="input" />
             </div>
             <div>
@@ -144,26 +158,9 @@
                 <option value="long">ארוכה</option>
               </select>
             </div>
-            <div>
+            <div class="md:col-span-2">
               <label class="block text-sm mb-1">עובד</label>
               <select id="mgrEmployee" class="input"></select>
-            </div>
-            <div>
-              <label class="block text-sm mb-1">תפקיד</label>
-              <select id="mgrRole" class="input">
-                <option value="chef">טבח</option>
-                <option value="counter">דלפק</option>
-                <option value="driver">שליח</option>
-                <option value="other">אחר</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm mb-1">שעת התחלה לעובד</label>
-              <input id="mgrStart" type="time" class="input" value="11:00" />
-            </div>
-            <div>
-              <label class="block text-sm mb-1">שעת סיום לעובד</label>
-              <input id="mgrEnd" type="time" class="input" value="17:00" />
             </div>
             <div>
               <label class="block text-sm mb-1">רכב (לשליחים)</label>
@@ -171,37 +168,55 @@
                 <option value="">—</option>
               </select>
             </div>
-            <div class="flex items-end">
+            <div>
+              <label class="block text-sm mb-1">שעת התחלה</label>
+              <input id="mgrStart" type="time" class="input" value="11:00" />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">שעת סיום</label>
+              <input id="mgrEnd" type="time" class="input" value="17:00" />
+            </div>
+            <div class="md:col-span-2 flex items-end">
               <button id="btnAssign" class="btn btn-primary w-full">שבץ עובד</button>
             </div>
           </div>
+
           <div>
             <div class="sec-title">צפייה במשמרות ליום</div>
-            <div id="dayShifts" class="text-sm space-y-2"></div>
+            <div id="dayShifts" class="grid md:grid-cols-2 gap-2 text-sm"></div>
           </div>
         </div>
 
         <!-- ניהול עובדים -->
         <div class="card space-y-3">
-          <div class="sec-title">ניהול עובדים</div>
-          <div class="grid-col">
-            <div>
-              <label class="block text-sm mb-1">שם מלא</label>
-              <input id="empName" class="input" />
-            </div>
-            <div>
-              <label class="block text-sm mb-1">טלפון</label>
-              <input id="empPhone" class="input" />
-            </div>
-            <div>
-              <label class="block text-sm mb-1">כתובת</label>
-              <input id="empAddress" class="input" />
-            </div>
-            <div class="flex items-end gap-2">
-              <button id="btnAddEmp" class="btn btn-primary w-full">הוסף עובד</button>
+          <div class="flex items-center justify-between">
+            <div class="sec-title m-0">ניהול עובדים</div>
+            <div class="kicker">הוספה מהירה, השבתה, אישור רישיון</div>
+          </div>
+
+          <!-- כרטיס הוספה מהירה -->
+          <div class="list-row">
+            <div class="grid md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label class="block text-sm mb-1">שם מלא</label>
+                <input id="empName" class="input" placeholder="שם פרטי ושם משפחה" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1">טלפון</label>
+                <input id="empPhone" class="input" placeholder="050-0000000" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1">כתובת</label>
+                <input id="empAddress" class="input" placeholder="רח׳, עיר" />
+              </div>
+              <div class="flex items-end">
+                <button id="btnAddEmp" class="btn btn-primary w-full">+ עובד חדש</button>
+              </div>
             </div>
           </div>
-          <div id="empList" class="text-sm"></div>
+
+          <!-- רשימה -->
+          <div id="empList" class="grid md:grid-cols-2 gap-2 text-sm"></div>
         </div>
       </section>
     </div>
@@ -210,22 +225,22 @@
     <script type="module">
       import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-      // 👇 לקוח יחיד עם schema=shifts
+      // לקוח יחיד עם schema=shifts
       const supabase = createClient(
         window.__SUPABASE_URL__,
         window.__SUPABASE_ANON_KEY__,
         { db: { schema: 'shifts' } }
       );
-      window.supa = supabase; // לאבחון
+      window.supa = supabase; // דיבוג
 
-      // Elements
+      // DOM
       const authSection = document.getElementById('authSection');
       const employeeSection = document.getElementById('employeeSection');
       const managerSection = document.getElementById('managerSection');
       const whoami = document.getElementById('whoami');
       const btnSignOut = document.getElementById('btnSignOut');
 
-      // Auth handlers
+      // Auth
       document.getElementById('btnSignIn').addEventListener('click', async () => {
         const email = (document.getElementById('email').value || '').trim();
         const password = document.getElementById('password').value || '';
@@ -249,11 +264,12 @@
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) return alert(error.message);
         if (!user) return;
+
         whoami.classList.remove('hidden');
         whoami.textContent = user.email || user.id;
         btnSignOut.classList.remove('hidden');
+        authSection.classList.add('hidden');
 
-        // ❗ שמות טבלאות ללא prefix של 'shifts.'
         const { data: prof, error: perr } = await supabase
           .from('user_profiles')
           .select('app_role, employee_id')
@@ -261,12 +277,11 @@
           .maybeSingle();
         if (perr) return alert('שגיאת פרופיל: ' + perr.message);
 
-        authSection.classList.add('hidden');
         if (prof?.app_role === 'manager') initManager();
         else initEmployee(prof?.employee_id);
       }
 
-      // ===== Employee Panel =====
+      // ===== Employee =====
       async function initEmployee(employeeId) {
         employeeSection.classList.remove('hidden');
         document.getElementById('avWeekStart').value = isoOfUpcomingSunday();
@@ -296,7 +311,7 @@
         box.innerHTML = '';
         const { data: rows, error } = await supabase
           .from('shift_assignments')
-          .select('id, start_time, end_time, status, role, shift:shift_id(date, slot, planned_start, planned_end), vehicle:vehicle_id(code)')
+          .select('id, start_time, end_time, status, shift:shift_id(date, slot), vehicle:vehicle_id(code)')
           .order('start_time');
         if (error) return box.innerHTML = `<div class="text-red-600">${error.message}</div>`;
         if (!rows?.length) return box.innerHTML = '<div class="text-gray-500">אין שיבוצים להצגה.</div>';
@@ -306,17 +321,17 @@
           const slotTxt = slotName(r.shift.slot);
           const veh = r.vehicle?.code ? ` · רכב ${r.vehicle.code}` : '';
           const el = document.createElement('div');
-          el.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between';
+          el.className = 'list-row flex items-center justify-between';
           el.innerHTML = `<div>
               <div class="font-semibold">${day} · ${slotTxt}${veh}</div>
-              <div class="text-gray-600">שעות אישיות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)} · תפקיד: ${roleName(r.role)}</div>
+              <div class="text-gray-600">שעות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)}</div>
             </div>
             <span class="tag">${statusName(r.status)}</span>`;
           box.appendChild(el);
         });
       }
 
-      // ===== Manager Panel =====
+      // ===== Manager =====
       async function initManager() {
         managerSection.classList.remove('hidden');
         document.getElementById('wkWeekStart').value = isoOfUpcomingSunday();
@@ -335,25 +350,28 @@
           const date = document.getElementById('mgrDate').value;
           const slot = document.getElementById('mgrSlot').value;
           const employee_id = document.getElementById('mgrEmployee').value;
-          const role = document.getElementById('mgrRole').value;
           const start_time = document.getElementById('mgrStart').value;
           const end_time = document.getElementById('mgrEnd').value;
           const vehicle_id = document.getElementById('mgrVehicle').value || null;
 
+          // מצא shift לאותו יום/סלוט
           const { data: shiftRow, error: sErr } = await supabase
             .from('shifts')
             .select('id')
-            .eq('date', date)
-            .eq('slot', slot)
+            .eq('date', date).eq('slot', slot)
             .maybeSingle();
           if (sErr) return alert('שגיאה בחיפוש משמרת: ' + sErr.message);
           if (!shiftRow) return alert('לא נמצאה משמרת ליום/סלוט הזה. צור שבוע תחילה.');
 
+          // אין קטגוריות תפקידים -> role default
           const { error } = await supabase.from('shift_assignments').insert({
             shift_id: shiftRow.id,
-            employee_id, role, start_time, end_time,
+            employee_id,
+            start_time,
+            end_time,
             vehicle_id: vehicle_id || null,
-            status: 'planned'
+            status: 'planned',
+            role: 'other'
           });
           if (error) return alert('שגיאה בשיבוץ: ' + error.message);
           alert('שובץ בהצלחה ✅');
@@ -372,7 +390,9 @@
           const address = document.getElementById('empAddress').value.trim() || null;
           const { error } = await supabase.from('employees').insert({ full_name, phone, address });
           if (error) return alert('שגיאה בהוספת עובד: ' + error.message);
-          document.getElementById('empName').value=''; document.getElementById('empPhone').value=''; document.getElementById('empAddress').value='';
+          document.getElementById('empName').value='';
+          document.getElementById('empPhone').value='';
+          document.getElementById('empAddress').value='';
           await loadActiveEmployees();
           await listEmployees();
         });
@@ -403,28 +423,29 @@
         const slot = document.getElementById('mgrSlot').value;
         const box = document.getElementById('dayShifts');
         box.innerHTML = '';
+
         const { data: s, error: e1 } = await supabase
           .from('shifts')
           .select('id, planned_start, planned_end')
-          .eq('date', date)
-          .eq('slot', slot)
+          .eq('date', date).eq('slot', slot)
           .maybeSingle();
         if (e1) return box.innerHTML = `<div class='text-red-600'>${e1.message}</div>`;
         if (!s) return box.innerHTML = `<div class='text-gray-500'>אין משמרת ביום זה. צור שבוע תחילה.</div>`;
 
         const { data: rows, error } = await supabase
           .from('shift_assignments')
-          .select('id, employee:employee_id(full_name, phone), role, start_time, end_time, vehicle:vehicle_id(code), status')
+          .select('id, employee:employee_id(full_name, phone), start_time, end_time, vehicle:vehicle_id(code), status')
           .eq('shift_id', s.id)
           .order('start_time');
         if (error) return box.innerHTML = `<div class='text-red-600'>${error.message}</div>`;
         if (!rows?.length) return box.innerHTML = `<div class='text-gray-500'>אין שיבוצים למשמרת זו.</div>`;
+
         rows.forEach(r => {
           const el = document.createElement('div');
-          el.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between';
+          el.className = 'list-row flex items-center justify-between';
           el.innerHTML = `<div>
-              <div class="font-semibold">${r.employee?.full_name || '—'} · ${roleName(r.role)} ${r.vehicle?.code?('· רכב '+r.vehicle.code):''}</div>
-              <div class="text-gray-600">שעות אישיות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)} · טל׳ ${r.employee?.phone || ''}</div>
+              <div class="font-semibold">${r.employee?.full_name || '—'} ${r.vehicle?.code?('· רכב '+r.vehicle.code):''}</div>
+              <div class="text-gray-600">שעות: ${r.start_time?.slice(0,5)}–${r.end_time?.slice(0,5)} · טל׳ ${r.employee?.phone || ''}</div>
             </div>
             <span class="tag">${statusName(r.status)}</span>`;
           box.appendChild(el);
@@ -443,19 +464,19 @@
         box.innerHTML = '';
         data.forEach(e => {
           const row = document.createElement('div');
-          row.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between gap-3';
+          row.className = 'list-row flex items-center justify-between gap-3';
           row.innerHTML = `
             <div>
               <div class="font-semibold ${e.active? '':'line-through text-gray-400'}">${e.full_name}</div>
-              <div class="text-gray-600 text-xs">טל׳ ${e.phone || ''} · ${e.address || ''}</div>
+              <div class="text-gray-600 text-xs">${e.phone || ''} · ${e.address || ''}</div>
               <div class="mt-1 flex gap-2">
                 <span class="tag">${e.active? 'פעיל':'מושבת'}</span>
                 <span class="tag">רישיון: ${e.driver_license_verified? 'מאושר ✅':'לא מאושר'}</span>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button class="btn btn-gray text-sm" data-action="toggle-license" data-id="${e.id}">${e.driver_license_verified? 'בטל אישור':'אשר רישיון'}</button>
-              ${e.active ? `<button class="btn btn-danger text-sm" data-action="deactivate" data-id="${e.id}">הסר עובד</button>` : ''}
+              <button class="btn btn-ghost text-sm" data-action="toggle-license" data-id="${e.id}">${e.driver_license_verified? 'בטל אישור':'אשר רישיון'}</button>
+              <button class="btn ${e.active?'btn-danger':'btn-primary'} text-sm" data-action="${e.active?'deactivate':'activate'}" data-id="${e.id}">${e.active?'הסר עובד':'הפעל עובד'}</button>
             </div>`;
           box.appendChild(row);
         });
@@ -465,13 +486,16 @@
       async function onEmpAction(ev) {
         const id = ev.currentTarget.getAttribute('data-id');
         const action = ev.currentTarget.getAttribute('data-action');
-        if (action === 'deactivate') {
-          if (!confirm('להסיר את העובד (soft delete)?')) return;
-          const { error } = await supabase.rpc('deactivate_employee', { p_employee_id: id });
-          if (error) return alert('שגיאה בהסרה: ' + error.message);
+
+        if (action === 'deactivate' || action === 'activate') {
+          if (action === 'deactivate' && !confirm('להסיר את העובד (Soft delete)?')) return;
+          const newVal = action === 'activate';
+          const { error } = await supabase.from('employees').update({ active: newVal }).eq('id', id);
+          if (error) return alert('שגיאה בעדכון סטטוס עובד: ' + error.message);
           await loadActiveEmployees();
           await listEmployees();
         }
+
         if (action === 'toggle-license') {
           const { data, error } = await supabase.from('employees').select('driver_license_verified').eq('id', id).maybeSingle();
           if (error) return alert(error.message);
@@ -484,9 +508,8 @@
         }
       }
 
-      // ===== Utils =====
-      function slotName(s) { return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה'); }
-      function roleName(r){ return {chef:'טבח',counter:'דלפק',driver:'שליח',other:'אחר'}[r]||r; }
+      // Utils
+      function slotName(s){ return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה'); }
       function statusName(s){ return {planned:'מתוכנן',confirmed:'מאושר',canceled:'מבוטל'}[s]||s; }
       function isoToday(){ const d=new Date(); const z=d.getTimezoneOffset()*60000; return new Date(Date.now()-z).toISOString().slice(0,10); }
       function isoOfUpcomingSunday(){ const d=new Date(); const day=(d.getDay()+6)%7; const diff=-day; const sunday=new Date(d.getFullYear(),d.getMonth(),d.getDate()+diff); const z=sunday.getTimezoneOffset()*60000; return new Date(sunday - z).toISOString().slice(0,10); }
@@ -496,7 +519,7 @@
         return new Date() <= deadline;
       }
 
-      // Auto init if already logged in
+      // Auto init
       (async () => {
         const { data:{ user } } = await supabase.auth.getUser();
         if (user) afterAuth();
