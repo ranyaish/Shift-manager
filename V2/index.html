@@ -27,15 +27,10 @@
     </div>
 
     <div class="container space-y-6 py-6">
-
       <!-- התחברות -->
       <section id="authSection" class="card">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-xl font-extrabold mb-1">כניסה למערכת</div>
-            <div class="kicker">הזן אימייל וסיסמה</div>
-          </div>
-        </div>
+        <div class="text-xl font-extrabold mb-1">כניסה למערכת</div>
+        <div class="kicker">הזן אימייל וסיסמה</div>
         <div class="grid md:grid-cols-3 gap-3 mt-4">
           <div>
             <label class="lbl">אימייל</label>
@@ -51,10 +46,55 @@
         </div>
       </section>
 
-      <!-- פאנל מנהל בלבד -->
-      <section id="managerPanel" class="hidden space-y-6">
+      <!-- תצוגת עובד -->
+      <section id="employeePanel" class="hidden space-y-6">
+        <div class="card">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <div class="sec-title m-0">הגשת זמינות לשבוע</div>
+              <div class="kicker">דד-ליין: שישי 14:00 לפני תחילת השבוע</div>
+            </div>
+            <span class="pill">📅 עובד</span>
+          </div>
+          <div class="grid md:grid-cols-5 gap-3">
+            <div class="md:col-span-2">
+              <label class="lbl">שבוע שמתחיל ביום ראשון</label>
+              <input id="avWeekStart" type="date" class="input" />
+            </div>
+            <div>
+              <label class="lbl">יום</label>
+              <select id="avDay" class="input">
+                <option value="0">ראשון</option><option value="1">שני</option><option value="2">שלישי</option>
+                <option value="3">רביעי</option><option value="4">חמישי</option><option value="5" disabled>שישי (סגור)</option><option value="6">שבת</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">משבצת</label>
+              <select id="avSlot" class="input">
+                <option value="lunch">צהריים (11–17)</option>
+                <option value="dinner">ערב (17–23)</option>
+                <option value="long">ארוכה (12–23)</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">הערה (אופציונלי)</label>
+              <input id="avNote" class="input" placeholder="למשל: מעדיף 12:30" />
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-end gap-2">
+            <button id="btnSubmitAvailability" class="btn btn-primary">שמור זמינות</button>
+          </div>
+        </div>
 
-        <!-- יצירת שבוע -->
+        <div class="card">
+          <div class="sec-title m-0">המשמרות שלי</div>
+          <div id="myShifts" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- פאנל מנהל -->
+      <section id="managerPanel" class="hidden space-y-6">
+        <!-- פתיחת שבוע -->
         <div class="card">
           <div class="flex items-center justify-between mb-2">
             <div>
@@ -75,16 +115,13 @@
           </div>
         </div>
 
-        <!-- תצוגת שבוע (סרגל אופקי) -->
+        <!-- תצוגת שבוע -->
         <div class="card">
           <div class="flex items-center justify-between mb-3">
             <div class="sec-title m-0">שבוע עבודה</div>
             <div class="kicker">גלילה אופקית במובייל</div>
           </div>
-
-          <div id="weekScroller" class="week-scroller">
-            <!-- עמודות ימים מוזרקות דינמית -->
-          </div>
+          <div id="weekScroller" class="week-scroller"></div>
         </div>
       </section>
 
@@ -96,6 +133,22 @@
             <button id="closeEmpModal" class="btn btn-ghost">סגור</button>
           </div>
           <div id="empModalBody" class="space-y-2 text-sm"></div>
+        </div>
+      </dialog>
+
+      <!-- מודל ניהול זמינות למשבצת -->
+      <dialog id="availModal" class="modal">
+        <div class="modal-box">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="availTitle" class="text-lg font-bold">ניהול זמינות</h3>
+            <button id="closeAvailModal" class="btn btn-ghost">סגור</button>
+          </div>
+          <div id="availBody" class="space-y-2 text-sm">
+            <!-- רשימת עובדים עם צ׳קבוקסים נטענת דינמית -->
+          </div>
+          <div class="mt-3 flex items-center justify-end gap-2">
+            <button id="btnSaveAvail" class="btn btn-primary">שמור</button>
+          </div>
         </div>
       </dialog>
     </div>
