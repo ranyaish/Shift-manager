@@ -1,93 +1,36 @@
-/* בסיס ועזרי RTL */
-:root { color-scheme: light; }
-html[dir="rtl"] * { letter-spacing: .1px; }
-body{
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans";
-  background:#f3f4f6; color:#0f172a;
+:root{
+  --brand:#38bdf8;        /* תכלת יפה */
+  --brand-600:#0ea5e9;
+  --brand-700:#0284c7;
 }
 
-/* כרטיסים, תגיות, תגים */
-.card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
-.sec-title{ font-weight:800; font-size:1.1rem; margin-bottom:.5rem; }
-.badge{ display:inline-block; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:.15rem .55rem; font-size:.8rem; }
-.pill{ display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; border:1px solid #bae6fd; background:#e0f2fe; color:#075985; font-weight:700; }
+body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; }
+.card{ background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.06); padding:14px; }
+.pill{ background:#e0f2fe; color:#075985; border-radius:999px; padding:2px 10px; font-size:12px; }
 
-/* טופס וקלטים */
-.input, select{
-  width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:.55rem .7rem; background:#fff;
-}
-.input:focus, select:focus{ outline:2px solid #a5f3fc; border-color:#67e8f9; }
-
-/* כפתורים — תכלת יפה */
-.btn{ padding:.5rem .9rem; border:none; border-radius:12px; font-weight:700; box-shadow:0 1px 2px rgba(2,6,23,.05); cursor:pointer; }
-.btn:disabled{ opacity:.55; cursor:not-allowed; }
-.btn-primary{ background:#38bdf8; color:#063344; }
-.btn-primary:hover{ background:#22d3ee; }
-.btn-danger{ background:#ef4444; color:#fff; }
-.btn-danger:hover{ background:#dc2626; }
-.btn-gray{ background:#e5e7eb; color:#111827; }
+.input{ width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:.45rem .6rem; }
+.btn{ padding:.45rem .7rem; border-radius:12px; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,.06); }
+.btn-primary{ background:var(--brand); color:#fff; }
+.btn-primary:hover{ background:var(--brand-600); }
+.btn-gray{ background:#e5e7eb; }
 .btn-gray:hover{ background:#d1d5db; }
-.btn-ghost{ background:transparent; color:#0f172a; }
-.btn-ghost:hover{ background:#f1f5f9; }
+.btn-danger{ background:#ef4444; color:#fff; }
+.btn-ghost{ background:transparent; }
+.btn-sm{ padding:.35rem .5rem; font-size:.9rem; }
 
-/* פריסות */
-.grid{ display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:.75rem; }
-.grid-col{ display:grid; grid-template-columns:1fr; gap:.75rem; }
-@media (min-width:768px){ .grid-col{ grid-template-columns:repeat(2,1fr); } }
+.badge{ background:#f3f4f6; border-radius:999px; padding:2px 8px; font-size:11px; color:#374151; }
 
-/* גלילת שבוע אופקית */
-#weekScroller{
-  display:flex; gap:12px; overflow-x:auto; padding:2px 2px 8px;
-  scroll-snap-type:x mandatory;
-}
-#weekScroller > .day-col{
-  min-width:300px; scroll-snap-align:start;
-}
+.day-col{ min-width:320px; border-right:1px dashed #e5e7eb; padding:10px; }
+.day-head{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+.day-head .font-extrabold{ font-size:16px; }
+.shift-box{ border:1px solid #e5e7eb; border-radius:14px; padding:10px; margin-top:8px; }
+.shift-title{ display:flex; align-items:center; gap:8px; font-weight:700; }
 
-/* עמודת יום */
-.day-col{ display:flex; flex-direction:column; gap:10px; }
-.day-head{
-  display:flex; align-items:center; justify-content:space-between;
-  background:#0ea5e9; color:#083344;
-  border:1px solid #7dd3fc; border-radius:14px; padding:.55rem .75rem;
-  font-weight:900; cursor:pointer;
-}
-.shift-box{ background:#fff; border:1px dashed #cbd5e1; border-radius:14px; padding:10px; }
-.shift-title{ display:flex; align-items:center; gap:8px; font-weight:800; }
+.assigned-row{ background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; margin-top:8px; }
+.assigned-row .emp-link{ color:#0284c7; font-weight:800; }
 
-/* רשימת שיבוצים במשבצת */
-.assigned-list{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
-.assigned-row{
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  border:1px solid #e5e7eb; border-radius:12px; background:#f8fafc; padding:8px 10px;
-}
-.emp-link{ color:#0ea5e9; font-weight:800; }
-.emp-link:hover{ text-decoration:underline; }
-.kicker{ color:#64748b; }
-
-/* הוספת עובד מהירה */
-.quick-add{ margin-top:.45rem; display:flex; gap:8px; }
-
-/* Timeline — תצוגת שורות-עובד ללא ציר שעות */
-#timelineCard{ overflow-x:auto; }
-#tlDayName{ font-weight:900; }
-#timelineBars{ display:flex; flex-direction:column; gap:8px; min-width:360px; }
-.emp-row{
-  display:flex; align-items:center; gap:10px;
-  background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px;
-}
-.emp-name{ font-weight:900; white-space:nowrap; min-width:8rem; text-align:right; }
-.emp-chips{ display:flex; gap:8px; flex-wrap:wrap; }
-.chip{
-  background:#bae6fd; border:1px solid #7dd3fc; color:#0b2a33;
-  border-radius:10px; padding:.35rem .6rem; font-weight:800;
-}
-
-/* דיאלוגים (מודלים) פשוטים */
-dialog{
-  border:none; border-radius:16px; padding:0; overflow:hidden;
-  box-shadow:0 10px 30px rgba(2,6,23,.25);
-}
-dialog .header{ background:#0ea5e9; color:#083344; font-weight:900; padding:10px 14px; }
-dialog .body{ padding:14px; max-height:65vh; overflow:auto; }
-dialog .footer{ padding:10px 14px; background:#f8fafc; display:flex; justify-content:flex-end; gap:8px; }
+.emp-row{ display:flex; align-items:center; justify-content:space-between;
+          border-bottom:1px dashed #e5e7eb; padding:6px 8px; }
+.emp-name{ font-weight:800; }
+.emp-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.chip{ background:#e0f2fe; color:#075985; border-radius:999px; padding:2px 8px; font-weight:700; font-size:.9rem; }
