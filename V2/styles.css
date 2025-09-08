@@ -34,3 +34,20 @@ body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; }
 .emp-name{ font-weight:800; }
 .emp-chips{ display:flex; gap:6px; flex-wrap:wrap; }
 .chip{ background:#e0f2fe; color:#075985; border-radius:999px; padding:2px 8px; font-weight:700; font-size:.9rem; }
+
+/* לוח הימים (אופקי) */
+#weekScroller{
+  display:flex;
+  gap:12px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  padding-bottom:8px;
+}
+.day-col{
+  flex:0 0 320px;           /* רוחב קבוע לכל יום */
+  min-width:320px;
+  scroll-snap-align:start;
+  border-right:1px dashed #e5e7eb;
+  padding:10px;
+}
