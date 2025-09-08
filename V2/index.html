@@ -77,7 +77,7 @@
               </select>
             </div>
             <div>
-              <label class="lbl">הערה (אופציונלי)</label>
+              <label class="lbl">הערה (למנהל)</label>
               <input id="avNote" class="input" placeholder="למשל: מעדיף 12:30" />
             </div>
           </div>
@@ -119,9 +119,21 @@
         <div class="card">
           <div class="flex items-center justify-between mb-3">
             <div class="sec-title m-0">שבוע עבודה</div>
-            <div class="kicker">גלילה אופקית במובייל</div>
+            <div class="kicker">ליחצו על כותרת יום כדי לראות ציר־זמן</div>
           </div>
           <div id="weekScroller" class="week-scroller"></div>
+        </div>
+
+        <!-- ציר־זמן יומי -->
+        <div id="timelineCard" class="card hidden">
+          <div class="flex items-center justify-between mb-2">
+            <div class="sec-title m-0"><span id="tlDayName">ציר־זמן יומי</span></div>
+            <div class="kicker">10:00–24:00</div>
+          </div>
+          <div class="timeline">
+            <div class="time-grid" id="timeGrid"></div>
+            <div class="bars" id="timelineBars"></div>
+          </div>
         </div>
       </section>
 
@@ -143,9 +155,7 @@
             <h3 id="availTitle" class="text-lg font-bold">ניהול זמינות</h3>
             <button id="closeAvailModal" class="btn btn-ghost">סגור</button>
           </div>
-          <div id="availBody" class="space-y-2 text-sm">
-            <!-- רשימת עובדים עם צ׳קבוקסים נטענת דינמית -->
-          </div>
+          <div id="availBody" class="space-y-2 text-sm"></div>
           <div class="mt-3 flex items-center justify-end gap-2">
             <button id="btnSaveAvail" class="btn btn-primary">שמור</button>
           </div>
