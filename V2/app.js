@@ -39,6 +39,14 @@ const availBody     = document.getElementById('availBody');
 const btnSaveAvail  = document.getElementById('btnSaveAvail');
 document.getElementById('closeAvailModal').onclick = () => availModal.close();
 
+// Timeline
+const timelineCard  = document.getElementById('timelineCard');
+const tlDayName     = document.getElementById('tlDayName');
+const timeGrid      = document.getElementById('timeGrid');
+const timelineBars  = document.getElementById('timelineBars');
+
+let _selectedDayISO = null;
+
 // ====== התחברות ======
 document.getElementById('btnSignIn').addEventListener('click', async () => {
   const email = (document.getElementById('email').value || '').trim();
@@ -78,12 +86,10 @@ async function afterAuth() {
   if (perr) return alert('שגיאת פרופיל: ' + perr.message);
 
   if (prof?.app_role === 'manager') {
-    // מציג גם פאנל מנהל וגם תצוגת עובד (אם יש employee_id)
     managerPanel.classList.remove('hidden');
     weekStartInp.value = isoOfUpcomingSunday();
     bindManager();
-
-    if (prof?.employee_id) initEmployee(prof.employee_id); // תצוגת עובד לעצמי (אם קיים)
+    if (prof?.employee_id) initEmployee(prof.employee_id);
   } else {
     if (!prof?.employee_id) return alert('לא נמצא כרטיס עובד לחשבון זה.');
     initEmployee(prof.employee_id);
@@ -105,7 +111,7 @@ function initEmployee(employeeId) {
       return alert('עבר הדד-ליין להגשת זמינות לשבוע זה (שישי 14:00).');
     }
 
-    // UPSERT זמינות
+    // UPSERT זמינות עם הערה
     const { error } = await supabase.from('availability').upsert({
       employee_id: employeeId, week_start, day_of_week, slot, note
     }, { onConflict: 'employee_id,week_start,day_of_week,slot' });
@@ -179,8 +185,18 @@ async function loadWeek(weekStartISO) {
 
   for (const d of ordered) {
     const dayData = byDay.get(d) || { date: d, slots: { lunch: null, dinner: null, long: null } };
-    weekScroller.appendChild(await renderDayColumn(dayData, weekStartISO));
+    const col = await renderDayColumn(dayData, weekStartISO);
+    // בחירת יום לטיימליין
+    col.querySelector('.day-head').addEventListener('click', async () => {
+      _selectedDayISO = dayData.date;
+      await renderTimeline(dayData.date);
+    });
+    weekScroller.appendChild(col);
   }
+
+  // ברירת מחדל לטיימליין – היום הראשון
+  _selectedDayISO = ordered[0];
+  await renderTimeline(_selectedDayISO);
 }
 
 async function renderDayColumn(dayData, weekStartISO) {
@@ -243,22 +259,23 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
   // 1) הצג שיבוצים קיימים
   await refreshAssignmentsUI(listEl, shiftRow.id);
 
-  // 2) עובדים זמינים לאותה משבצת
-  const available = await fetchAvailableEmployees(dayData.date, slot);
+  // 2) עובדים זמינים + הערות זמינות
+  const avail = await fetchAvailableWithNotes(dayData.date, slot);
   selEl.innerHTML = '';
-  if (!available.length) {
+  if (!avail.length) {
     selEl.innerHTML = `<option>אין עובדים זמינים</option>`;
     selEl.disabled = true; btnEl.disabled = true;
   } else {
-    available.forEach(e => {
+    avail.forEach(e => {
       const o = document.createElement('option');
-      o.value = e.id; o.textContent = e.full_name;
+      o.value = e.id;
+      o.textContent = e.full_name + (e.note ? ` — ${e.note}` : '');
       selEl.appendChild(o);
     });
     selEl.disabled = false; btnEl.disabled = false;
   }
 
-  // 3) שבץ עובד שנשלחה זמינות שלו
+  // 3) שבץ עובד זמין
   btnEl.onclick = async () => {
     const employee_id = selEl.value;
     if (!employee_id) return;
@@ -269,6 +286,7 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
     });
     if (error) return alert('שגיאת שיבוץ: ' + error.message);
     await refreshAssignmentsUI(listEl, shiftRow.id);
+    if (_selectedDayISO === dayData.date) renderTimeline(dayData.date); // רענון טיימליין
   };
 
   // 4) הוספת עובד חופשי + שיבוץ
@@ -285,9 +303,10 @@ async function renderShiftBox(container, dayData, slot, weekStartISO) {
     if (e2) return alert('שגיאת שיבוץ: ' + e2.message);
     qaName.value = '';
     await refreshAssignmentsUI(listEl, shiftRow.id);
+    if (_selectedDayISO === dayData.date) renderTimeline(dayData.date);
   };
 
-  // 5) ניהול זמינות למשבצת (מנהל יכול להוסיף/להסיר זמינות לכל עובד)
+  // 5) ניהול זמינות למשבצת (כולל הצגת הערות)
   availBtn.onclick = async () => {
     await openAvailManager(dayData.date, slot, weekStartISO);
   };
@@ -325,6 +344,7 @@ async function refreshAssignmentsUI(listEl, shift_id) {
       const { error: derr } = await supabase.from('shift_assignments').delete().eq('id', r.id);
       if (derr) return alert('שגיאת הסרה: ' + derr.message);
       await refreshAssignmentsUI(listEl, shift_id);
+      if (_selectedDayISO) renderTimeline(_selectedDayISO);
     };
 
     const wrap = document.createElement('div');
@@ -335,26 +355,27 @@ async function refreshAssignmentsUI(listEl, shift_id) {
   });
 }
 
-async function fetchAvailableEmployees(isoDate, slot) {
+// ====== זמינות עם הערות ======
+async function fetchAvailableWithNotes(isoDate, slot) {
   const dow = dayIndexFromISO(isoDate);
   const ws = weekStartFromISO(isoDate);
 
-  const { data, error } = await supabase
+  const { data: av, error } = await supabase
     .from('availability')
-    .select('employee_id, employees:employee_id(id, full_name)')
+    .select('employee_id, note')
     .eq('week_start', ws).eq('day_of_week', dow).eq('slot', slot);
   if (error) { console.error(error); return []; }
 
-  const ids = [...new Set((data||[]).map(r => r.employee_id))];
+  const notesByEmp = new Map(av.map(a => [a.employee_id, a.note]));
+  const ids = [...new Set(av.map(r => r.employee_id))];
   if (!ids.length) return [];
 
   const { data: emps, error: e2 } = await supabase
-    .from('employees')
-    .select('id, full_name, active')
-    .in('id', ids).eq('active', true)
-    .order('full_name');
+    .from('employees').select('id, full_name, active')
+    .in('id', ids).eq('active', true).order('full_name');
   if (e2) { console.error(e2); return []; }
-  return emps || [];
+
+  return (emps || []).map(e => ({ ...e, note: notesByEmp.get(e.id) || '' }));
 }
 
 // ====== ניהול זמינות (מודל) ======
@@ -369,24 +390,27 @@ async function openAvailManager(isoDate, slot, weekStartISO) {
     .from('employees').select('id, full_name, active').eq('active', true).order('full_name');
   if (e1) { availBody.innerHTML = `<div class="text-red-600">${e1.message}</div>`; return; }
 
-  // זמינות קיימת ליום/סלוט
+  // זמינות קיימת + הערות
   const dow = dayIndexFromISO(isoDate);
   const { data: av, error: e2 } = await supabase
     .from('availability')
-    .select('employee_id')
+    .select('employee_id, note')
     .eq('week_start', weekStartISO).eq('day_of_week', dow).eq('slot', slot);
   if (e2) { availBody.innerHTML = `<div class="text-red-600">${e2.message}</div>`; return; }
   const availSet = new Set(av.map(x => x.employee_id));
+  const notes = new Map(av.map(x => [x.employee_id, x.note]));
 
   // UI
   availBody.innerHTML = '';
   employees.forEach(emp => {
+    const note = notes.get(emp.id);
     const row = document.createElement('label');
     row.className = 'assigned-row';
     row.innerHTML = `
       <div class="flex items-center gap-2">
         <input type="checkbox" class="av-chk" data-id="${emp.id}" ${availSet.has(emp.id)?'checked':''}/>
         <span>${emp.full_name}</span>
+        ${note ? `<span class="badge">${note}</span>` : ''}
       </div>
     `;
     availBody.appendChild(row);
@@ -399,18 +423,15 @@ btnSaveAvail.onclick = async () => {
   if (!_availCtx) return availModal.close();
   const { isoDate, slot, ws } = _availCtx;
   const dow = dayIndexFromISO(isoDate);
-  // אוסף בחירות
   const chks = [...availBody.querySelectorAll('.av-chk')];
   const toKeep = new Set(chks.filter(c=>c.checked).map(c=>c.getAttribute('data-id')));
 
-  // שליפת מצב נוכחי
   const { data: cur } = await supabase
     .from('availability')
     .select('employee_id')
     .eq('week_start', ws).eq('day_of_week', dow).eq('slot', slot);
   const curSet = new Set(cur?.map(x=>String(x.employee_id)) || []);
 
-  // חישוב פעולות
   const toInsert = [...toKeep].filter(id => !curSet.has(String(id)));
   const toDelete = [...curSet].filter(id => !toKeep.has(String(id)));
 
@@ -451,11 +472,78 @@ async function openEmployeeCard(employeeId) {
   empModal.showModal();
 }
 
+/* ===== Timeline logic =====
+   טווח ברירת־מחדל: 10:00–24:00 (לפי הדרישה) */
+const TL_START = 10;  // שעה התחלתית
+const TL_END   = 24;  // שעה סופית
+
+function buildTimeGrid() {
+  timeGrid.innerHTML = '';
+  for (let h = TL_START; h <= TL_END; h++) {
+    const t = document.createElement('div');
+    t.className = 'tick';
+    t.textContent = (h<10?'0':'') + h + ':00';
+    timeGrid.appendChild(t);
+  }
+}
+buildTimeGrid();
+
+async function renderTimeline(isoDate) {
+  tlDayName.textContent = 'ציר־זמן · ' + new Date(isoDate).toLocaleDateString('he-IL',{weekday:'long', day:'2-digit', month:'2-digit'});
+  timelineCard.classList.remove('hidden');
+  timelineBars.innerHTML = '';
+
+  // שלוף כל השיבוצים של אותו יום (כל הסלוטים)
+  const { data: shifts } = await supabase
+    .from('shifts')
+    .select('id, date, planned_start, planned_end')
+    .eq('date', isoDate);
+
+  if (!shifts?.length) {
+    timelineBars.innerHTML = `<div class="kicker p-3">אין משמרות ליום זה.</div>`;
+    return;
+  }
+  const shiftIds = shifts.map(s => s.id);
+
+  const { data: assigns, error } = await supabase
+    .from('shift_assignments')
+    .select('id, start_time, end_time, employee:employee_id(full_name)')
+    .in('shift_id', shiftIds)
+    .order('start_time');
+  if (error) {
+    timelineBars.innerHTML = `<div class="text-red-600 p-3">${error.message}</div>`;
+    return;
+  }
+  if (!assigns?.length) {
+    timelineBars.innerHTML = `<div class="kicker p-3">אין שיבוצים ליום זה.</div>`;
+    return;
+  }
+
+  // ציור פס לכל שיבוץ
+  const scale = (h, m=0) => ((h + m/60) - TL_START) / (TL_END - TL_START) * 100;
+  assigns.forEach((a, idx) => {
+    const [sh, sm] = (a.start_time || '11:00').split(':').map(Number);
+    const [eh, em] = (a.end_time   || '17:00').split(':').map(Number);
+    const left = Math.max(0, scale(sh, sm));
+    const right = Math.min(100, scale(eh, em));
+    const width = Math.max(3, right - left); // מינימום רוחב
+
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.left = left + '%';
+    bar.style.width = width + '%';
+    bar.style.top = (idx * 40 + 8) + 'px'; // שורות אחת מתחת לשנייה
+    bar.innerHTML = `<span class="name">${a.employee?.full_name || '—'}</span>
+                     <span class="time">${(a.start_time||'').slice(0,5)}–${(a.end_time||'').slice(0,5)}</span>`;
+    timelineBars.appendChild(bar);
+  });
+}
+
 // ====== Utils ======
 function slotName(s){ return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה'); }
 function statusName(s){ return {planned:'מתוכנן',confirmed:'מאושר',canceled:'מבוטל'}[s]||s; }
 function isoOfUpcomingSunday(){
-  const d=new Date(); const day=(d.getDay()+0)%7; // 0=ראשון ב-JS
+  const d=new Date(); const day=(d.getDay()+0)%7; // 0=ראשון
   const sun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-day);
   const z=sun.getTimezoneOffset()*60000; return new Date(sun - z).toISOString().slice(0,10);
 }
