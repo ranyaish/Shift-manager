@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ניהול משמרות – נונע</title>
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <!-- Toolbar -->
+    <div class="toolbar border-b">
+      <div class="container">
+        <div class="flex items-center justify-between py-3">
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl md:text-3xl font-extrabold">🧩 ניהול משמרות – נונע</h1>
+            <span class="kicker hidden md:inline">MVP</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="whoami" class="text-sm text-gray-600 hidden"></span>
+            <button id="btnSignOut" class="btn btn-ghost hidden">התנתק</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container space-y-6 py-6">
+
+      <!-- התחברות -->
+      <section id="authSection" class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xl font-extrabold mb-1">כניסה למערכת</div>
+            <div class="kicker">הזן אימייל וסיסמה</div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 mt-4">
+          <div>
+            <label class="lbl">אימייל</label>
+            <input id="email" class="input" type="email" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label class="lbl">סיסמה</label>
+            <input id="password" class="input" type="password" placeholder="••••••••" />
+          </div>
+          <div class="flex items-end">
+            <button id="btnSignIn" type="button" class="btn btn-primary w-full">כניסה</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- פאנל מנהל בלבד -->
+      <section id="managerPanel" class="hidden space-y-6">
+
+        <!-- יצירת שבוע -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <div class="sec-title m-0">יצירת שבוע חדש</div>
+              <div class="kicker">מייצר את 6 ימי העבודה והמשבצות לשבוע</div>
+            </div>
+            <span class="pill">👑 מנהל</span>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
+              <label class="lbl">שבוע שמתחיל ביום ראשון</label>
+              <input id="weekStart" type="date" class="input" />
+            </div>
+            <div class="flex items-end gap-2">
+              <button id="btnOpenWeek" class="btn btn-primary">פתח שבוע</button>
+              <button id="btnReloadWeek" class="btn btn-ghost hidden">רענן</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- תצוגת שבוע (סרגל אופקי) -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-3">
+            <div class="sec-title m-0">שבוע עבודה</div>
+            <div class="kicker">גלילה אופקית במובייל</div>
+          </div>
+
+          <div id="weekScroller" class="week-scroller">
+            <!-- עמודות ימים מוזרקות דינמית -->
+          </div>
+        </div>
+      </section>
+
+      <!-- מודל כרטיס עובד -->
+      <dialog id="employeeModal" class="modal">
+        <div class="modal-box">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="empModalTitle" class="text-lg font-bold">כרטיס עובד</h3>
+            <button id="closeEmpModal" class="btn btn-ghost">סגור</button>
+          </div>
+          <div id="empModalBody" class="space-y-2 text-sm"></div>
+        </div>
+      </dialog>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
