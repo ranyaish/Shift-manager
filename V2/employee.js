@@ -1,290 +1,161 @@
-// employee.js  (טעינה כ-module יחיד!)
-// ----- קונפיגורציה -----
+// employee.js
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+// ===== הגדרות (עדכן לערכים שלך) =====
 const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
 
-// ----- Supabase client (ESM) -----
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { db: { schema: 'shifts' } });
+// Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
-// ----- אלמנטים -----
-const loginCard   = document.getElementById('loginCard');
-const panel       = document.getElementById('employeePanel');
-const whoami      = document.getElementById('whoami');
-const btnSignOut  = document.getElementById('btnSignOut');
+// אלמנטים
+const loginBox = document.getElementById('loginBox')
+const employeeBox = document.getElementById('employeeBox')
+const btnLogin = document.getElementById('btnLogin')
+const btnSignOut = document.getElementById('btnSignOut')
+const whoami = document.getElementById('whoami')
 
-const btnLogin    = document.getElementById('btnLogin');
-const btnSave     = document.getElementById('btnSaveAvailability');
-const btnClear    = document.getElementById('btnClear');
-const btnRefresh  = document.getElementById('btnRefresh');
+const inpUsername = document.getElementById('username')
+const inpPassword = document.getElementById('password')
 
-const inpWeek     = document.getElementById('avWeekStart');
-const selDay      = document.getElementById('avDay');
-const selSlot     = document.getElementById('avSlot');
-const inpNote     = document.getElementById('avNote');
-const listBox     = document.getElementById('myAvailList');
+const empFullName = document.getElementById('empFullName')
+const empPhone = document.getElementById('empPhone')
+const empAddress = document.getElementById('empAddress')
+const btnSaveProfile = document.getElementById('btnSaveProfile')
 
-// ----- מצב לקוח -----
-let employee = null; // { id, full_name, phone, ... }
+const avDate = document.getElementById('avDate')
+const avSlot = document.getElementById('avSlot')
+const avNote = document.getElementById('avNote')
+const btnSaveAvailability = document.getElementById('btnSaveAvailability')
+const myAvail = document.getElementById('myAvail')
 
-// ----- עזרי תאריכים -----
-function tzISODate(d) {
-  const z = d.getTimezoneOffset() * 60000;
-  return new Date(d - z).toISOString().slice(0, 10);
+// "Session" קלה בלוקאל סטורג'
+function setCreds(u, p, emp) {
+  localStorage.setItem('empCreds', JSON.stringify({ u, p, emp }))
 }
-function upcomingSundayISO() {
-  const d = new Date();
-  // בישראל: נחשב "ראשון הקרוב/נוכחי"
-  const weekday = (d.getDay() + 6) % 7; // 0=ראשון
-  const diff = -weekday; // חזרה לראשון הנוכחי
-  const sunday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
-  return tzISODate(sunday);
+function getCreds() {
+  try { return JSON.parse(localStorage.getItem('empCreds') || 'null') } catch { return null }
 }
-const dayName = (i) => ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'][i] || i;
-const slotName = (s) => ({ lunch:'צהריים', dinner:'ערב', long:'ארוכה' }[s] || s);
-
-// ===== התחברות/התנתקות =====
-btnLogin.addEventListener('click', login);
-btnSignOut.addEventListener('click', signOut);
-
-async function login() {
-  const username = (document.getElementById('username').value || '').trim();
-  const password = (document.getElementById('password').value || '').trim();
-  if (!username || !password) {
-    alert('נא למלא שם משתמש וסיסמה');
-    return;
-  }
-
-  // חיפוש בטבלת האישורים (ללא RLS של Supabase Auth)
-  const { data: cred, error } = await supabase
-    .from('employee_credentials')
-    .select('id, employee_id')
-    .eq('username', username)
-    .eq('password', password)
-    .maybeSingle();
-
-  if (error) {
-    alert('שגיאה בכניסה: ' + error.message);
-    return;
-  }
-  if (!cred) {
-    alert('שם משתמש או סיסמה אינם נכונים');
-    return;
-  }
-
-  // שליפת פרטי העובד
-  const { data: emp, error: e2 } = await supabase
-    .from('employees')
-    .select('id, full_name, phone')
-    .eq('id', cred.employee_id)
-    .maybeSingle();
-  if (e2 || !emp) {
-    alert('לא נמצאו פרטי עובד');
-    return;
-  }
-
-  employee = emp;
-  localStorage.setItem('employee_id', employee.id);
-  localStorage.setItem('employee_name', employee.full_name || '');
-
-  whoami.textContent = employee.full_name || `עובד ${employee.id}`;
-  whoami.classList.remove('hidden');
-  btnSignOut.classList.remove('hidden');
-
-  loginCard.classList.add('hidden');
-  panel.classList.remove('hidden');
-
-  // ברירות מחדל לטופס
-  inpWeek.value = upcomingSundayISO();
-
-  await refreshMyAvailabilities();
+function clearCreds() {
+  localStorage.removeItem('empCreds')
 }
 
-function signOut() {
-  employee = null;
-  localStorage.removeItem('employee_id');
-  localStorage.removeItem('employee_name');
-  whoami.classList.add('hidden');
-  btnSignOut.classList.add('hidden');
-  loginCard.classList.remove('hidden');
-  panel.classList.add('hidden');
-  // ניקוי
-  listBox.innerHTML = '';
+// עזרי תאריכים
+function isoToday() {
+  const d = new Date()
+  const z = d.getTimezoneOffset() * 60000
+  return new Date(Date.now() - z).toISOString().slice(0, 10)
+}
+function weekLabelFromDate(d) {
+  return new Date(d).toLocaleDateString('he-IL', { weekday:'long', day:'2-digit', month:'2-digit' })
 }
 
-// Auto-login אם יש זיהוי ב־localStorage
-(async function autoLogin() {
-  const empId = localStorage.getItem('employee_id');
-  const empName = localStorage.getItem('employee_name');
-  if (!empId) return;
+// ===== כניסה/יציאה =====
+btnLogin.addEventListener('click', async () => {
+  const username = (inpUsername.value || '').trim()
+  const password = inpPassword.value || ''
+  if (!username || !password) return alert('נא למלא שם משתמש וסיסמה')
 
-  // נבדוק שהעובד עדיין קיים/פעיל
-  const { data: emp, error } = await supabase
-    .from('employees')
-    .select('id, full_name, phone, active')
-    .eq('id', empId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('employee_login', { p_username: username, p_password: password })
+  if (error) return alert('שגיאת כניסה: ' + error.message)
+  if (!data || data.length === 0) return alert('שם משתמש או סיסמה שגויים')
 
-  if (error || !emp || emp.active === false) {
-    // נקה מזהה לא חוקי
-    localStorage.removeItem('employee_id');
-    localStorage.removeItem('employee_name');
-    return;
-  }
+  const row = data[0]
+  whoami.textContent = row.full_name
+  whoami.classList.remove('hidden')
+  btnSignOut.classList.remove('hidden')
 
-  employee = emp;
-  whoami.textContent = emp.full_name || empName || `עובד ${emp.id}`;
-  whoami.classList.remove('hidden');
-  btnSignOut.classList.remove('hidden');
-  loginCard.classList.add('hidden');
-  panel.classList.remove('hidden');
+  // שמירת "סשן" מקומי
+  setCreds(username, password, { id: row.employee_id, full_name: row.full_name })
 
-  inpWeek.value = upcomingSundayISO();
-  await refreshMyAvailabilities();
-})();
+  // מילוי פרופיל
+  empFullName.value = row.full_name || ''
+  empPhone.value = row.phone || ''
+  empAddress.value = row.address || ''
 
-// ===== שליחת זמינות =====
-btnSave.addEventListener('click', saveAvailability);
-btnClear.addEventListener('click', clearForm);
-btnRefresh.addEventListener('click', refreshMyAvailabilities);
+  // UI
+  loginBox.classList.add('hidden')
+  employeeBox.classList.remove('hidden')
 
-async function saveAvailability() {
-  if (!employee?.id) {
-    alert('יש להתחבר קודם');
-    return;
-  }
-  const week_start  = inpWeek.value;
-  const day_of_week = Number(selDay.value);
-  const slot        = selSlot.value;
-  const note        = inpNote.value || null;
+  // זמינות: ברירת מחדל תאריך להיום + ריענון שבוע
+  avDate.value = isoToday()
+  await refreshMyWeek()
+})
 
-  if (!week_start) {
-    alert('בחר תאריך תחילת שבוע');
-    return;
-  }
+btnSignOut.addEventListener('click', () => {
+  clearCreds()
+  location.reload()
+})
 
-  // מניעת כפילות: ננסה למחוק קודם את הרשומה הקיימת לאותו employee/week/day/slot ואז להכניס
-  const { error: dErr } = await supabase
-    .from('availability')
-    .delete()
-    .eq('employee_id', employee.id)
-    .eq('week_start', week_start)
-    .eq('day_of_week', day_of_week)
-    .eq('slot', slot);
-  if (dErr && dErr.code !== 'PGRST116') {
-    // PGRST116 = no rows deleted, לא חיוני
-    console.warn('delete pre-upsert error', dErr);
-  }
+// נסה להיכנס אוטומטית אם יש סשן שמור
+;(async function autoLogin() {
+  const c = getCreds()
+  if (!c) return
+  inpUsername.value = c.u
+  inpPassword.value = c.p
+  btnLogin.click()
+})()
 
-  const { error } = await supabase
-    .from('availability')
-    .insert({ employee_id: employee.id, week_start, day_of_week, slot, note });
+// ===== פרופיל =====
+btnSaveProfile.addEventListener('click', async () => {
+  const c = getCreds(); if (!c) return alert('יש להתחבר שוב')
+  const { data, error } = await supabase.rpc('employee_update_profile', {
+    p_username: c.u,
+    p_password: c.p,
+    p_phone: empPhone.value || null,
+    p_address: empAddress.value || null
+  })
+  if (error) return alert('שגיאה בשמירת פרופיל: ' + error.message)
+  alert('נשמר ✅')
+})
 
-  if (error) {
-    alert('שגיאה בשמירת זמינות: ' + error.message);
-    return;
-  }
-  clearForm();
-  await refreshMyAvailabilities();
-  alert('הזמינות נשמרה ✅');
-}
+// ===== זמינות =====
+btnSaveAvailability.addEventListener('click', async () => {
+  const c = getCreds(); if (!c) return alert('יש להתחבר שוב')
+  const dateISO = avDate.value
+  const slot = avSlot.value
+  const note = avNote.value || null
+  if (!dateISO || !slot) return alert('חסר תאריך או משבצת')
 
-function clearForm() {
-  selDay.value = '0';
-  selSlot.value = 'lunch';
-  inpNote.value = '';
-}
+  const { data, error } = await supabase.rpc('employee_upsert_availability', {
+    p_username: c.u,
+    p_password: c.p,
+    p_date: dateISO,
+    p_slot: slot,
+    p_note: note
+  })
+  if (error) return alert('שגיאה בשמירת זמינות: ' + error.message)
 
-// ===== רשימת הזמינויות שלי =====
-async function refreshMyAvailabilities() {
-  if (!employee?.id) return;
-  listBox.innerHTML = '<div class="text-gray-500">טוען…</div>';
+  avNote.value = ''
+  await refreshMyWeek()
+  alert('הזמינות נשמרה ✅')
+})
 
-  const today = tzISODate(new Date());
+async function refreshMyWeek() {
+  const c = getCreds(); if (!c) return
+  const anchor = avDate.value || isoToday()
+  const { data, error } = await supabase.rpc('employee_week_availability', {
+    p_username: c.u,
+    p_password: c.p,
+    p_anchor: anchor
+  })
+  if (error) { myAvail.innerHTML = `<div class="text-red-600">${error.message}</div>`; return }
+  if (!data || data.length === 0) { myAvail.innerHTML = `<div class="text-gray-500">אין זמינויות בשבוע זה.</div>`; return }
 
-  const { data: rows, error } = await supabase
-    .from('availability')
-    .select('id, week_start, day_of_week, slot, note, created_at')
-    .eq('employee_id', employee.id)
-    .gte('week_start', today)        // רק משבוע נוכחי והלאה
-    .order('week_start', { ascending: true })
-    .order('day_of_week', { ascending: true })
-    .order('slot', { ascending: true });
-
-  if (error) {
-    listBox.innerHTML = `<div class="text-red-600">${error.message}</div>`;
-    return;
-  }
-  if (!rows?.length) {
-    listBox.innerHTML = '<div class="text-gray-500">אין זמינויות להצגה.</div>';
-    return;
-  }
-
-  const frag = document.createDocumentFragment();
-  rows.forEach(r => {
-    const wrap = document.createElement('div');
-    wrap.className = 'p-3 bg-white rounded-xl shadow flex items-center justify-between gap-3';
-    const dname = dayName(r.day_of_week);
-    const sname = slotName(r.slot);
-    wrap.innerHTML = `
+  const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']
+  myAvail.innerHTML = ''
+  data.forEach(r => {
+    const row = document.createElement('div')
+    row.className = 'p-3 rounded-xl bg-gray-50 flex items-center justify-between'
+    row.innerHTML = `
       <div>
-        <div class="font-semibold">${fmtDate(r.week_start)} · ${dname} · ${sname}</div>
-        ${r.note ? `<div class="text-gray-600 text-xs">הערה: ${escapeHtml(r.note)}</div>` : ''}
+        <div class="font-semibold">${days[r.day_of_week]} · ${slotName(r.slot)}</div>
+        ${r.note ? `<div class="text-xs text-gray-600">${r.note}</div>` : ''}
       </div>
-      <div class="flex items-center gap-2">
-        <button class="btn btn-gray text-sm" data-act="edit" data-id="${r.id}">ערוך</button>
-        <button class="btn btn-danger text-sm" data-act="del" data-id="${r.id}">מחק</button>
-      </div>`;
-    frag.appendChild(wrap);
-  });
-  listBox.innerHTML = '';
-  listBox.appendChild(frag);
-
-  // חיבור אירועים
-  listBox.querySelectorAll('button[data-act]').forEach(btn => {
-    btn.addEventListener('click', onAvailAction);
-  });
+      <span class="tag">${new Date(r.week_start).toLocaleDateString('he-IL')}</span>
+    `
+    myAvail.appendChild(row)
+  })
 }
 
-async function onAvailAction(ev) {
-  const id = ev.currentTarget.getAttribute('data-id');
-  const act = ev.currentTarget.getAttribute('data-act');
-  const row = await fetchAvailById(id);
-  if (!row) return;
-
-  if (act === 'edit') {
-    // העמסה לטופס העריכה
-    inpWeek.value  = row.week_start;
-    selDay.value   = String(row.day_of_week);
-    selSlot.value  = row.slot;
-    inpNote.value  = row.note || '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  if (act === 'del') {
-    if (!confirm('למחוק את הזמינות הזו?')) return;
-    const { error } = await supabase.from('availability').delete().eq('id', id);
-    if (error) return alert('שגיאה במחיקה: ' + error.message);
-    await refreshMyAvailabilities();
-  }
-}
-
-async function fetchAvailById(id) {
-  const { data, error } = await supabase
-    .from('availability')
-    .select('id, employee_id, week_start, day_of_week, slot, note')
-    .eq('id', id)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
-}
-
-// ----- עזרי הצגה -----
-function fmtDate(iso) {
-  try {
-    const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' });
-  } catch { return iso; }
-}
-function escapeHtml(s='') {
-  return s.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-}
+function slotName(s){ return s==='lunch'?'צהריים':(s==='dinner'?'ערב':'ארוכה') }
