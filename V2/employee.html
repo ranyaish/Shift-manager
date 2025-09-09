@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>זמינות משמרות — עובד</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#0ea5e9" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
+      .card { @apply bg-white rounded-2xl shadow p-4 md:p-6; }
+      .btn  { @apply px-4 py-2 rounded-xl font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed; }
+      .btn-primary { @apply bg-sky-500 hover:bg-sky-600 text-white; }
+      .btn-gray    { @apply bg-gray-200 hover:bg-gray-300; }
+      .btn-danger  { @apply bg-red-600 hover:bg-red-700 text-white; }
+      .input, select, textarea { @apply w-full border rounded-xl px-3 py-2 bg-white; }
+      .tag { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100; }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
+
+      <!-- כותרת + סטטוס -->
+      <header class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-extrabold">זמינות משמרות — עובד</h1>
+        <div class="flex items-center gap-3">
+          <span id="whoami" class="text-sm text-gray-600 hidden"></span>
+          <button id="btnSignOut" class="btn btn-gray hidden">התנתק</button>
+        </div>
+      </header>
+
+      <!-- טופס כניסה -->
+      <section id="loginCard" class="card">
+        <div class="text-lg font-bold mb-3">כניסת עובד</div>
+        <div class="grid md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-sm mb-1">שם משתמש</label>
+            <input id="username" class="input" placeholder="username" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">סיסמה</label>
+            <input id="password" class="input" type="password" placeholder="••••" />
+          </div>
+          <div class="flex items-end">
+            <button id="btnLogin" class="btn btn-primary w-full">כניסה</button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">הכניסה מתבצעת מול טבלת <code>shifts.employee_credentials</code>.</p>
+      </section>
+
+      <!-- פאנל עובד -->
+      <section id="employeePanel" class="hidden space-y-4">
+        <!-- שליחת זמינות -->
+        <div class="card space-y-3">
+          <div class="text-lg font-bold">הגשת זמינות לשבוע</div>
+          <div class="grid md:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm mb-1">שבוע שמתחיל ביום ראשון</label>
+              <input id="avWeekStart" type="date" class="input" />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">יום בשבוע</label>
+              <select id="avDay" class="input">
+                <option value="0">ראשון</option>
+                <option value="1">שני</option>
+                <option value="2">שלישי</option>
+                <option value="3">רביעי</option>
+                <option value="4">חמישי</option>
+                <option value="5">שישי</option>
+                <option value="6">שבת</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">משבצת</label>
+              <select id="avSlot" class="input">
+                <option value="lunch">צהריים (11–17)</option>
+                <option value="dinner">ערב (17–23)</option>
+                <option value="long">ארוכה (12–23)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">הערה למנהל (אופציונלי)</label>
+            <input id="avNote" class="input" placeholder="למשל: יכול להגיע מאוחר יותר" />
+          </div>
+          <div class="flex gap-3">
+            <button id="btnSaveAvailability" class="btn btn-primary">שמור זמינות</button>
+            <button id="btnClear" class="btn btn-gray">איפוס טופס</button>
+          </div>
+          <p class="text-xs text-gray-500">המערכת מונעת כפילויות לאותו שבוע/יום/משבצת — שמירה תעדכן את הרשומה הקיימת.</p>
+        </div>
+
+        <!-- הזמינויות שלי -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-lg font-bold">הזמינויות שלי (מהיום והלאה)</div>
+            <button id="btnRefresh" class="btn btn-gray text-sm">רענן</button>
+          </div>
+          <div id="myAvailList" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- טעינת ה־JS (גרסת MODULE יחידה) -->
+    <script type="module" src="./employee.js"></script>
+  </body>
+</html>
