@@ -1,17 +1,18 @@
-// employee.js (ללא import ובלי createClient כאן)
-// נדרש: בקובץ config.js טען:
-// const SUPABASE_URL = '...'; const SUPABASE_ANON_KEY = '...';
-// window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// employee.js — גרסה מלאה, משתמשת ב-supabase.schema('shifts')
+// דרוש: בקובץ config.js מוגדרים
+//   window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__
+//   window.supabase = supabase.createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__);
 
 (function () {
   'use strict';
 
-  // ודא שהלקוח קיים מהקובץ config.js
+  // ודא שהלקוח אותחל ב-config.js
   if (!window.supabase) {
     alert('Supabase לא אותחל. ודא שהקובץ config.js נטען לפני employee.js');
     return;
   }
-  const supabase = window.supabase;
+  // עבודה מול סכימת shifts
+  const db = window.supabase.schema('shifts');
 
   // ----- אלמנטים -----
   const loginBox = document.getElementById('loginBox');
@@ -39,11 +40,8 @@
     localStorage.setItem('empCreds', JSON.stringify({ u, p, emp }));
   }
   function getCreds() {
-    try {
-      return JSON.parse(localStorage.getItem('empCreds') || 'null');
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem('empCreds') || 'null'); }
+    catch { return null; }
   }
   function clearCreds() {
     localStorage.removeItem('empCreds');
@@ -67,22 +65,16 @@
       return;
     }
 
-    const { data, error } = await supabase.rpc('employee_login', {
+    const { data, error } = await db.rpc('employee_login', {
       p_username: username,
       p_password: password
     });
 
-    if (error) {
-      alert('שגיאת כניסה: ' + error.message);
-      return;
-    }
-    if (!data || data.length === 0) {
-      alert('שם משתמש או סיסמה שגויים');
-      return;
-    }
+    if (error) { alert('שגיאת כניסה: ' + error.message); return; }
+    if (!data || data.length === 0) { alert('שם משתמש או סיסמה שגויים'); return; }
 
     const row = data[0];
-    whoami.textContent = row.full_name;
+    whoami.textContent = row.full_name || username;
     whoami.classList.remove('hidden');
     btnSignOut.classList.remove('hidden');
 
@@ -117,39 +109,30 @@
   // ----- עדכון פרופיל -----
   btnSaveProfile.addEventListener('click', async () => {
     const c = getCreds();
-    if (!c) {
-      alert('יש להתחבר שוב');
-      return;
-    }
-    const { error } = await supabase.rpc('employee_update_profile', {
+    if (!c) { alert('יש להתחבר שוב'); return; }
+
+    const { error } = await db.rpc('employee_update_profile', {
       p_username: c.u,
       p_password: c.p,
       p_phone: empPhone.value || null,
       p_address: empAddress.value || null
     });
-    if (error) {
-      alert('שגיאה בשמירת פרופיל: ' + error.message);
-      return;
-    }
+
+    if (error) { alert('שגיאה בשמירת פרופיל: ' + error.message); return; }
     alert('נשמר ✅');
   });
 
   // ----- שמירת זמינות -----
   btnSaveAvailability.addEventListener('click', async () => {
     const c = getCreds();
-    if (!c) {
-      alert('יש להתחבר שוב');
-      return;
-    }
+    if (!c) { alert('יש להתחבר שוב'); return; }
+
     const dateISO = avDate.value;
     const slot = avSlot.value;
     const note = avNote.value || null;
-    if (!dateISO || !slot) {
-      alert('חסר תאריך או משבצת');
-      return;
-    }
+    if (!dateISO || !slot) { alert('חסר תאריך או משבצת'); return; }
 
-    const { error } = await supabase.rpc('employee_upsert_availability', {
+    const { error } = await db.rpc('employee_upsert_availability', {
       p_username: c.u,
       p_password: c.p,
       p_date: dateISO,
@@ -157,10 +140,7 @@
       p_note: note
     });
 
-    if (error) {
-      alert('שגיאה בשמירת זמינות: ' + error.message);
-      return;
-    }
+    if (error) { alert('שגיאה בשמירת זמינות: ' + error.message); return; }
 
     avNote.value = '';
     await refreshMyWeek();
@@ -171,9 +151,9 @@
   async function refreshMyWeek() {
     const c = getCreds();
     if (!c) return;
-    const anchor = avDate.value || isoToday();
 
-    const { data, error } = await supabase.rpc('employee_week_availability', {
+    const anchor = avDate.value || isoToday();
+    const { data, error } = await db.rpc('employee_week_availability', {
       p_username: c.u,
       p_password: c.p,
       p_anchor: anchor
@@ -188,7 +168,7 @@
       return;
     }
 
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
     myAvail.innerHTML = '';
     data.forEach(r => {
       const row = document.createElement('div');
