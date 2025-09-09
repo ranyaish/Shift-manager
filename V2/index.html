@@ -14,7 +14,7 @@
       window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
     </script>
 
-    <!-- בזמן דיבוג – ביטול SW כדי למנוע קאש של גרסאות ישנות -->
+    <!-- בזמן דיבוג – אפשר לנטרל SW כדי למנוע קאש של גרסאות ישנות -->
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister()));
@@ -22,10 +22,12 @@
     </script>
 
     <style>
-      /* קוסמטיקה קטנה לטיימליין + כפתורי תכלת */
+      /* כפתור תכלת */
       .btn-primary { background:#27a3f8; color:#fff; }
       .btn-primary:hover { filter: brightness(0.95); }
-      .chip { @apply inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold; }
+      /* תגית קטנה */
+      .chip { display:inline-block; padding:0.25rem 0.6rem; border-radius:9999px; background:#eff6ff; color:#1d4ed8; font-size:.75rem; font-weight:600; }
+      /* הסתרת סקרול בר אופקי */
       .scrollbar-hide::-webkit-scrollbar { display:none; }
       .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
     </style>
@@ -33,6 +35,7 @@
 
   <body class="bg-gray-100 min-h-screen">
     <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+
       <!-- Header -->
       <header class="flex items-center justify-between">
         <h1 class="text-3xl md:text-4xl font-extrabold">🧩 ניהול משמרות – נונע</h1>
@@ -62,16 +65,6 @@
 
       <!-- פאנל עובד -->
       <section id="employeeSection" class="hidden space-y-4">
-        <!-- ⬇⬇ הוסף אחרי<select id="mgrEmployee"> ... -->
-<div class="mt-2 flex items-center gap-3">
-  <label class="inline-flex items-center gap-2 text-sm">
-    <input id="chkShowAllEmployees" type="checkbox" class="w-4 h-4">
-    הצג גם עובדים לא זמינים
-  </label>
-  <button id="btnMarkAvailable" type="button" class="rounded-xl px-3 py-2 bg-gray-200">
-    סמן כזמין למשבצת
-  </button>
-</div>
         <!-- הגשת זמינות -->
         <div class="bg-white rounded-2xl shadow p-4">
           <div class="text-lg font-bold mb-2">הגשת זמינות לשבוע</div>
@@ -116,7 +109,7 @@
 
       <!-- פאנל מנהל -->
       <section id="managerSection" class="hidden space-y-5">
-        <!-- פתיחת שבוע / שמירה / מחיקה -->
+        <!-- פתיחת שבוע / פרסום / מחיקה -->
         <div class="bg-white rounded-2xl shadow p-4">
           <div class="text-lg font-bold mb-3">שבוע עבודה</div>
           <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -143,7 +136,7 @@
           <div id="daysScroller" class="flex gap-3 overflow-x-auto scrollbar-hide"></div>
         </div>
 
-        <!-- קונסולת שיבוץ ליום נבחר -->
+        <!-- קונסולת שיבוץ + תצוגת יום -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <!-- קלטי שיבוץ -->
           <div class="bg-white rounded-2xl shadow p-4 space-y-4">
@@ -164,8 +157,27 @@
               <div>
                 <label class="block text-sm mb-1">עובד (זמין למשבצת)</label>
                 <select id="mgrEmployee" class="w-full border rounded-xl px-3 py-2 bg-white"></select>
-                <div class="text-xs text-gray-500 mt-1">מוצגים רק עובדים שסימנו זמינות למשבצת ביום זה.</div>
+                <div class="text-xs text-gray-500 mt-1">ברירת מחדל: רק עובדים שסימנו זמינות למשבצת ביום זה.</div>
+
+                <!-- תוספות ניהול זמינות -->
+                <div class="mt-2 flex items-center gap-3">
+                  <label class="inline-flex items-center gap-2 text-sm">
+                    <input id="chkShowAllEmployees" type="checkbox" class="w-4 h-4">
+                    הצג גם עובדים לא זמינים
+                  </label>
+
+                  <!-- מודאל ניהול זמינות -->
+                  <button id="btnManageAvailability" type="button" class="rounded-xl px-3 py-2 bg-gray-200">
+                    ⚙ ניהול זמינות ליום/משבצת
+                  </button>
+
+                  <!-- סימון עובד בודד -->
+                  <button id="btnMarkAvailable" type="button" class="rounded-xl px-3 py-2 bg-gray-200">
+                    סמן כזמין
+                  </button>
+                </div>
               </div>
+
               <div>
                 <label class="block text-sm mb-1">שעת התחלה</label>
                 <input id="mgrStart" type="time" class="w-full border rounded-xl px-3 py-2 bg-white" value="11:00" />
