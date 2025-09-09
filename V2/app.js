@@ -1,7 +1,8 @@
 // app.js – לוגין, טיוטת שבוע, גלילה אופקית, סינון זמינות,
 // שיבוץ/עריכה/הסרה, תצוגת יום (שעה -> שמות), הגשת זמינות,
-// + חדש: הצגת כל העובדים וסימון עובד כ"זמין" ע"י המנהל,
-// + חדש: תצוגת יום ללא שעות ריקות.
+// + חדש: מודאל "ניהול זמינות" למנהל (צ'קבוקסים+הערות לכל העובדים הפעילים),
+// + קיים: אפשרות "סמן כזמין" לעובד בודד,
+// + תצוגת יום ללא שעות ריקות.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -42,9 +43,10 @@ const dayGrid = document.getElementById('dayGrid');
 const btnPrevDay = document.getElementById('btnPrevDay');
 const btnNextDay = document.getElementById('btnNextDay');
 
-// NEW: show-all toggle + mark-available button
+// NEW: show-all toggle + mark-available + manage-availability modal
 const chkShowAllEmployees = document.getElementById('chkShowAllEmployees');
 const btnMarkAvailable = document.getElementById('btnMarkAvailable');
+const btnManageAvailability = document.getElementById('btnManageAvailability');
 
 // Employee controls
 const avWeekStart = document.getElementById('avWeekStart');
@@ -60,13 +62,13 @@ let currentRole = null; // 'manager' | 'employee'
 let currentWeekStartISO = null;
 let currentDayISO = null;
 let vehiclesCache = [];
-let allActiveEmployeesCache = []; // לשימוש ב"כל העובדים"
+let allActiveEmployeesCache = []; // לכל העובדים הפעילים
 
 // ===== Helpers =====
 const fmtISO = (d) => d.toISOString().slice(0,10);
 function tzISO(dateLike) { const d=new Date(dateLike); const z=d.getTimezoneOffset()*60000; return new Date(d-z).toISOString().slice(0,10); }
 function upcomingSundayISO() {
-  const d = new Date(); const day = d.getDay(); // 0=ראשון
+  const d = new Date(); const day = d.getDay(); // 0=Sunday
   const sunday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
   return tzISO(sunday);
 }
@@ -91,7 +93,6 @@ loginForm?.addEventListener('submit', async (ev) => {
   if (error) return alert('שגיאת התחברות: ' + error.message);
   await afterAuth();
 });
-
 btnSignOut?.addEventListener('click', async () => { await supabase.auth.signOut(); location.reload(); });
 
 async function afterAuth() {
@@ -170,11 +171,12 @@ async function initManager(){
 
   mgrDate.onchange = async () => { currentDayISO = mgrDate.value; await renderDayList(); await loadEmployeesForSelector(); };
   mgrSlot.onchange = async () => { await loadEmployeesForSelector(); };
-  chkShowAllEmployees.onchange = async () => { await loadEmployeesForSelector(); };
+  chkShowAllEmployees?.addEventListener('change', async ()=>{ await loadEmployeesForSelector(); });
 
   btnAssign.onclick = async () => { await assignSelected(); };
   btnAddAdHoc.onclick = async () => { await addAdHocEmployee(); };
-  btnMarkAvailable.onclick = async () => { await markSelectedAsAvailable(); };
+  btnMarkAvailable?.addEventListener('click', async ()=>{ await markSelectedAsAvailable(); });
+  btnManageAvailability?.addEventListener('click', async ()=>{ await openAvailabilityModal(currentDayISO, mgrSlot.value); });
 
   btnPrevDay.onclick = () => { shiftDay(-1); };
   btnNextDay.onclick = () => { shiftDay(1); };
@@ -239,8 +241,7 @@ async function loadEmployeesForSelector(){
   const date = mgrDate.value;
   const slot = mgrSlot.value;
 
-  if (chkShowAllEmployees.checked){
-    // כל העובדים הפעילים
+  if (chkShowAllEmployees?.checked){
     if (!allActiveEmployeesCache.length) await loadAllActiveEmployees();
     if (!allActiveEmployeesCache.length){
       mgrEmployee.innerHTML='<option value="">אין עובדים</option>'; return;
@@ -249,7 +250,6 @@ async function loadEmployeesForSelector(){
     return;
   }
 
-  // רק עובדים שסימנו זמינות למשבצת זו
   const weekday = new Date(date+'T00:00:00').getDay(); // 0..6
   const { data, error } = await supabase
     .from('availability')
@@ -265,7 +265,7 @@ async function loadEmployeesForSelector(){
   else mgrEmployee.innerHTML = uniq.map(e=>`<option value="${e.id}">${e.full_name}</option>`).join('');
 }
 
-// סימון עובד כ"זמין" ע"י המנהל – יוצר רשומת availability
+// סימון עובד כ"זמין" ע"י המנהל – יוצר רשומת availability לעובד הנבחר
 async function markSelectedAsAvailable(){
   const employee_id = mgrEmployee.value;
   if (!employee_id) return alert('בחר עובד כדי לסמן כזמין.');
@@ -275,13 +275,10 @@ async function markSelectedAsAvailable(){
   const weekday = new Date(date+'T00:00:00').getDay(); // 0..6
   const week_start = currentWeekStartISO;
 
-  // בדוק אם קיים
   const { data: ex, error: e1 } = await supabase
     .from('availability')
     .select('id').eq('employee_id', employee_id)
-    .eq('week_start', week_start)
-    .eq('day_of_week', weekday)
-    .eq('slot', slot).limit(1);
+    .eq('week_start', week_start).eq('day_of_week', weekday).eq('slot', slot).limit(1);
   if (e1) return alert('שגיאה בבדיקת זמינות: '+e1.message);
   if (ex && ex.length) { alert('העובד כבר מסומן כזמין למשבצת זו.'); return; }
 
@@ -291,6 +288,112 @@ async function markSelectedAsAvailable(){
   if (error) return alert('שגיאה בסימון זמינות: '+error.message);
   alert('העובד סומן כזמין ✅');
   await loadEmployeesForSelector();
+}
+
+/* ===== Modal: ניהול זמינות מרוכז (לכל העובדים הפעילים) ===== */
+function ensureAvailabilityModal(){
+  let dlg = document.getElementById('availModalMgr');
+  if (dlg) return dlg;
+  dlg = document.createElement('dialog');
+  dlg.id = 'availModalMgr';
+  dlg.style.border = 'none';
+  dlg.style.borderRadius = '16px';
+  dlg.style.maxWidth = '720px';
+  dlg.innerHTML = `
+    <form method="dialog" style="padding:0; min-width: 560px;">
+      <div style="background:#27a3f8; color:#062a3a; padding:10px 14px; font-weight:900" id="availTitleMgr">ניהול זמינות</div>
+      <div style="max-height:65vh; overflow:auto; padding:14px" id="availBodyMgr">טוען…</div>
+      <div style="background:#f8fafc; padding:10px 14px; display:flex; justify-content:flex-end; gap:8px">
+        <button value="cancel" class="rounded-xl px-3 py-2 bg-gray-200">ביטול</button>
+        <button id="btnAvailSaveMgr" class="btn-primary rounded-xl px-3 py-2">שמור</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(dlg);
+  return dlg;
+}
+
+async function openAvailabilityModal(dateISO, slot){
+  const dlg = ensureAvailabilityModal();
+  const title = dlg.querySelector('#availTitleMgr');
+  const body  = dlg.querySelector('#availBodyMgr');
+  const btnSave = dlg.querySelector('#btnAvailSaveMgr');
+
+  title.textContent = `ניהול זמינות · ${dayNameHe(dateISO)} · ${slotName(slot)}`;
+  body.innerHTML = 'טוען…';
+
+  // כל העובדים הפעילים
+  if (!allActiveEmployeesCache.length) await loadAllActiveEmployees();
+  const emps = allActiveEmployeesCache;
+
+  // זמינות קיימת ליום/משבצת
+  const wstart = currentWeekStartISO;
+  const dow    = new Date(dateISO+'T00:00:00').getDay();
+  const { data: av, error: e2 } = await supabase
+    .from('availability')
+    .select('employee_id, note')
+    .eq('week_start', wstart).eq('day_of_week', dow).eq('slot', slot);
+  if (e2) { body.innerHTML = `<div class="text-red-600">${e2.message}</div>`; dlg.showModal(); return; }
+
+  const selected = new Set(av.map(x=>String(x.employee_id)));
+  const notesMap = new Map(av.map(x=>[String(x.employee_id), x.note || '']));
+
+  // טבלת צ׳קבוקסים + הערות
+  body.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'space-y-2';
+  emps.forEach(emp=>{
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 rounded-xl border px-3 py-2';
+    row.innerHTML = `
+      <input type="checkbox" class="av-chk" data-id="${emp.id}" ${selected.has(String(emp.id))?'checked':''}/>
+      <div class="grow font-medium">${emp.full_name}</div>
+      <input type="text" class="w-64 border rounded-xl px-3 py-1 bg-white av-note" data-id="${emp.id}" placeholder="הערה…" value="${(notesMap.get(String(emp.id))||'').replaceAll('"','&quot;')}"/>
+    `;
+    wrapper.appendChild(row);
+  });
+  body.appendChild(wrapper);
+
+  btnSave.onclick = async (ev)=>{
+    ev.preventDefault();
+    const chks  = [...body.querySelectorAll('.av-chk')];
+    const notes = new Map([...body.querySelectorAll('.av-note')].map(i=>[String(i.getAttribute('data-id')), i.value.trim()]));
+
+    const want = new Set(chks.filter(c=>c.checked).map(c=>String(c.getAttribute('data-id'))));
+    const cur  = new Set(av.map(x=>String(x.employee_id)));
+
+    const toInsert = [...want].filter(id => !cur.has(id));
+    const toDelete = [...cur].filter(id => !want.has(id));
+    const toUpdate = [...want].filter(id => cur.has(id) && (notes.get(id) !== (notesMap.get(id)||'')));
+
+    // insert
+    if (toInsert.length){
+      const rows = toInsert.map(id => ({ employee_id: id, week_start: wstart, day_of_week: dow, slot, note: notes.get(id) || null }));
+      const { error } = await supabase.from('availability').insert(rows);
+      if (error) { alert(error.message); return; }
+    }
+    // update notes
+    for (const id of toUpdate){
+      const { error } = await supabase
+        .from('availability').update({ note: notes.get(id) || null })
+        .eq('employee_id', id).eq('week_start', wstart).eq('day_of_week', dow).eq('slot', slot);
+      if (error) { alert(error.message); return; }
+    }
+    // delete
+    if (toDelete.length){
+      const { error } = await supabase
+        .from('availability').delete()
+        .eq('week_start', wstart).eq('day_of_week', dow).eq('slot', slot)
+        .in('employee_id', toDelete);
+      if (error) { alert(error.message); return; }
+    }
+
+    dlg.close();
+    alert('הזמינות נשמרה ✅');
+    await loadEmployeesForSelector();
+  };
+
+  dlg.showModal();
 }
 
 // שיבוץ עובד
@@ -329,7 +432,7 @@ async function addAdHocEmployee(){
   const { error } = await supabase.from('employees').insert({ full_name:name, active:true });
   if (error) return alert('שגיאה בהוספה: '+error.message);
   adHocName.value=''; await loadAllActiveEmployees(); await loadEmployeesForSelector();
-  alert('עובד נוצר ✅ – ניתן לסמן כזמין אם צריך.');
+  alert('עובד נוצר ✅ – ניתן לסמן כזמין (במודאל/כפתור).');
 }
 
 // תצוגת יום: שורות רק לשעות שיש בהן שיבוצים (ללא רווחים)
@@ -352,15 +455,13 @@ async function renderDayAssignments(dateISO){
   if (!dedup.length){ dayGrid.innerHTML='<div class="text-gray-500">אין שיבוצים ליום זה.</div>'; return; }
 
   // קבץ לפי שעת התחלה (שעה עגולה)
-  const groups = new Map(); // hourStr -> array
+  const groups = new Map();
   for (const a of dedup){
     if (!a.start_time) continue;
     const hourStr = a.start_time.slice(0,2)+':00';
     if (!groups.has(hourStr)) groups.set(hourStr, []);
     groups.get(hourStr).push(a);
   }
-
-  // סדר שעות לפי הזמן
   const ordered = Array.from(groups.keys()).sort((h1,h2)=>timeToMinutes(h1)-timeToMinutes(h2));
 
   dayGrid.innerHTML='';
@@ -382,7 +483,6 @@ async function renderDayAssignments(dateISO){
         <button class="text-xs underline text-red-600" data-action="remove" data-id="${a.id}">הסר</button>`;
       right.appendChild(pill);
     }
-
     row.appendChild(right); row.appendChild(left); dayGrid.appendChild(row);
   }
 
