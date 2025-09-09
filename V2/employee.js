@@ -6,7 +6,7 @@ const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
 
 // Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // אלמנטים
 const loginBox = document.getElementById('loginBox')
