@@ -1,7 +1,7 @@
 // employee.js  (טעינה כ-module יחיד!)
 // ----- קונפיגורציה -----
-const SUPABASE_URL  = window.__SUPABASE_URL__  || 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
-const SUPABASE_ANON = window.__SUPABASE_ANON__ || 'PASTE_YOUR_ANON_KEY_HERE';
+const SUPABASE_URL = 'https://uzaqpwbejceyuhnmfdmq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6YXFwd2JlamNleXVobm1mZG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyODc3NzMsImV4cCI6MjA3MDg2Mzc3M30.Wcuu97xzFvJCt8x2ubHLwc19-ZsfrRLK9YZHICV3T3A';
 
 // ----- Supabase client (ESM) -----
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
