@@ -1,7 +1,7 @@
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
-    caches.open('pnl-cache-v1').then((c) => c.addAll(['./', './index.html']))
+    caches.open('pnl-cache-v2').then((c) => c.addAll(['./', './index.html']))
   );
 });
 
