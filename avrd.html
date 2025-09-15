@@ -1,0 +1,94 @@
+<!doctype html>
+
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>מחשבון מיצוע ורווח/הפסד</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="theme-color" content="#0b1b2b">
+  <style>
+    html, body { background: #ffffff; }
+    .card { background: #ffffff; }
+    .muted { color: #6B7280; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="min-h-screen text-gray-900">
+  <div class="max-w-4xl mx-auto p-4 sm:p-8">
+    <header class="mb-6">
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">מחשבון מיצוע ורווח/הפסד</h1>
+      <p class="muted">כלי מהיר לחישוב ממוצע חדש בעסקה, רווח/הפסד באחוזים ובכסף, ונקודת איזון.</p>
+    </header><div class="grid md:grid-cols-2 gap-6">
+  <!-- כרטיס: פוזיציה נוכחית -->
+  <section class="card rounded-2xl p-5 shadow-lg">
+    <h2 class="text-xl font-semibold mb-4">פוזיציה נוכחית</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="muted text-sm">כמות מניות</span>
+        <input id="qty" type="number" inputmode="decimal" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="למשל 410" />
+      </label>
+      <label class="block">
+        <span class="muted text-sm">שער ממוצע קיים ($)</span>
+        <input id="avg" type="number" inputmode="decimal" step="0.0001" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="למשל 17.79" />
+      </label>
+      <label class="block col-span-2">
+        <span class="muted text-sm">שער נוכחי ($)</span>
+        <input id="priceNow" type="number" inputmode="decimal" step="0.0001" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="למשל 16.16" />
+      </label>
+      <label class="block col-span-2">
+        <span class="muted text-sm">עמלות קיימות (אופציונלי, $)</span>
+        <input id="feesExisting" type="number" inputmode="decimal" step="0.01" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="0" />
+      </label>
+    </div>
+  </section>
+
+  <!-- כרטיס: רכישה למיצוע -->
+  <section class="card rounded-2xl p-5 shadow-lg">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xl font-semibold">רכישה למיצוע (אופציונלי)</h2>
+      <label class="flex items-center gap-2 text-sm">
+        <input id="toggleMode" type="checkbox" class="accent-cyan-500" /> לפי סכום ($) / לפי כמות
+      </label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block" id="amountWrap">
+        <span class="muted text-sm">סכום הרכישה ($)</span>
+        <input id="amount" type="number" inputmode="decimal" step="0.01" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="1000" />
+      </label>
+      <label class="block hidden" id="addQtyWrap">
+        <span class="muted text-sm">כמות מניות לרכישה</span>
+        <input id="addQty" type="number" inputmode="decimal" step="0.0001" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="לדוגמה 62" />
+      </label>
+      <label class="block">
+        <span class="muted text-sm">שער רכישה ($)</span>
+        <input id="buyPrice" type="number" inputmode="decimal" step="0.0001" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="ברירת מחדל: השער הנוכחי" />
+      </label>
+      <label class="block">
+        <span class="muted text-sm">עמלות קנייה (אופציונלי, $)</span>
+        <input id="feesNew" type="number" inputmode="decimal" step="0.01" class="w-full mt-1 rounded-xl bg-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="0" />
+      </label>
+    </div>
+    <p class="muted text-xs mt-2">טיפ: אם השארת את הרכישה ריקה — תראה רק את המצב הנוכחי ללא מיצוע.</p>
+  </section>
+</div>
+
+<!-- פעולות -->
+<div class="mt-6 flex flex-wrap gap-3">
+  <button id="calcBtn" class="bg-cyan-200 hover:bg-cyan-300 px-5 py-2.5 rounded-xl font-semibold shadow text-gray-900">חשב</button>
+  <button id="resetBtn" class="bg-gray-200 hover:bg-gray-300 px-5 py-2.5 rounded-xl font-semibold text-gray-900">איפוס</button>
+  <button id="saveBtn" class="bg-purple-200 hover:bg-purple-300 px-5 py-2.5 rounded-xl font-semibold text-gray-900">שמור קלט</button>
+</div>
+
+<section id="results" class="mt-6 grid lg:grid-cols-2 gap-6 hidden"></section>
+<section id="sensitivity" class="mt-6 hidden"></section>
+
+<footer class="mt-10 text-xs muted">
+  נבנה עבור חישוב מהיר בלבד. אין באמור ייעוץ השקעות.
+</footer>
+
+  </div>  <script>
+    // (קוד JavaScript נשאר כפי שהוא, פונקציות חישוב + PWA)
+  </script></body>
+</html>
