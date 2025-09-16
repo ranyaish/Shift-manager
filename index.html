@@ -160,158 +160,167 @@
   </div>
 
   <!-- רישום Service Worker -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
-      });
+<script>
+  const $ = sel => document.querySelector(sel);
+  // פרסר מספרים סלחני: מוריד רווחים/פסיקים/תוים “מוזרים”
+  const asNum = v => {
+    const s = (v ?? '').toString()
+      .replace(/[,\s]/g, '')       // פסיקים ורווחים
+      .replace(/[׳’′]/g, '');      // גרשיים “עבריים”
+    const n = Number(s);
+    return isFinite(n) ? n : 0;
+  };
+  const fmt2 = n => (Math.round((+n || 0) * 100) / 100).toFixed(2);
+
+  const qty = $('#qty');
+  const avg = $('#avg');
+  const priceNow = $('#priceNow');
+  const feesExisting = $('#feesExisting');
+
+  const toggleMode = $('#toggleMode');
+  const amount = $('#amount');
+  const addQty = $('#addQty');
+  const buyPrice = $('#buyPrice');
+  const feesNew = $('#feesNew');
+  const amountWrap = $('#amountWrap');
+  const addQtyWrap = $('#addQtyWrap');
+
+  const resSec = document.getElementById('results');
+  const sensSec = document.getElementById('sensitivity');
+
+  (function loadSaved() {
+    try {
+      const s = JSON.parse(localStorage.getItem('position_calc_saved') || '{}');
+      ['qty','avg','priceNow','feesExisting','amount','addQty','buyPrice','feesNew','toggleMode']
+        .forEach(k => {
+          if (s[k] !== undefined) {
+            if (k === 'toggleMode') toggleMode.checked = !!s[k];
+            else document.getElementById(k).value = s[k];
+          }
+        });
+      updateMode();
+      if (!buyPrice.value && priceNow.value) buyPrice.value = priceNow.value;
+    } catch {}
+  })();
+
+  // שמירה / איפוס
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const data = {
+      qty: qty.value, avg: avg.value, priceNow: priceNow.value, feesExisting: feesExisting.value,
+      amount: amount.value, addQty: addQty.value, buyPrice: buyPrice.value, feesNew: feesNew.value,
+      toggleMode: toggleMode.checked
+    };
+    localStorage.setItem('position_calc_saved', JSON.stringify(data));
+    alert('הקלט נשמר בדפדפן.');
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    [qty, avg, priceNow, feesExisting, amount, addQty, buyPrice, feesNew].forEach(el => el.value = '');
+    toggleMode.checked = false; updateMode();
+    resSec.classList.add('hidden');
+    sensSec.classList.add('hidden');
+    localStorage.removeItem('position_calc_saved');
+  });
+
+  // מצב קלט: סכום/כמות
+  document.getElementById('toggleMode').addEventListener('change', () => { updateMode(); calc(); });
+  function updateMode(){
+    if (toggleMode.checked) { // לפי כמות
+      amountWrap.classList.add('hidden');
+      addQtyWrap.classList.remove('hidden');
+    } else { // לפי סכום
+      addQtyWrap.classList.add('hidden');
+      amountWrap.classList.remove('hidden');
     }
-  </script>
+  }
 
-  <!-- חישובים -->
-  <script>
-    const $ = sel => document.querySelector(sel);
-    const fmt2 = n => (Math.round((+n || 0) * 100) / 100).toFixed(2);
-    const asNum = v => Number((v ?? '').toString().trim()) || 0;
+  // חישוב מרוכז
+  function calc() {
+    const Q  = asNum(qty.value);
+    const A  = asNum(avg.value);
+    const P  = asNum(priceNow.value);
+    const F0 = asNum(feesExisting.value);
 
-    const qty = $('#qty');
-    const avg = $('#avg');
-    const priceNow = $('#priceNow');
-    const feesExisting = $('#feesExisting');
+    const useQty = toggleMode.checked;
+    const addQ   = useQty ? asNum(addQty.value) : 0;
+    if (!buyPrice.value && priceNow.value) buyPrice.value = priceNow.value;
+    const PB   = asNum(buyPrice.value || P);
+    const Amt  = useQty ? (addQ * PB) : asNum(amount.value);
+    const F1   = asNum(feesNew.value);
 
-    const toggleMode = $('#toggleMode');
-    const amount = $('#amount');
-    const addQty = $('#addQty');
-    const buyPrice = $('#buyPrice');
-    const feesNew = $('#feesNew');
-    const amountWrap = $('#amountWrap');
-    const addQtyWrap = $('#addQtyWrap');
+    if (!Q || !A || !P) return; // דרושים שלושת אלו לפחות
 
-    const resSec = document.getElementById('results');
-    const sensSec = document.getElementById('sensitivity');
+    // לפני מיצוע
+    const invested_before = Q * A + F0;
+    const value_before    = Q * P;
+    const pnl_before      = value_before - invested_before;
+    const pnlp_before     = invested_before ? (pnl_before / invested_before * 100) : 0;
+    const be_before       = A + (F0 / Math.max(Q, 1e-12));
 
-    (function loadSaved() {
-      try {
-        const s = JSON.parse(localStorage.getItem('position_calc_saved') || '{}');
-        ['qty','avg','priceNow','feesExisting','amount','addQty','buyPrice','feesNew','toggleMode']
-          .forEach(k => {
-            if (s[k] !== undefined) {
-              if (k === 'toggleMode') toggleMode.checked = !!s[k];
-              else document.getElementById(k).value = s[k];
-            }
-          });
-        updateMode();
-        if (!buyPrice.value && priceNow.value) buyPrice.value = priceNow.value;
-      } catch {}
-    })();
+    // אחרי מיצוע
+    const add_qty_calc = useQty ? addQ : (PB ? (Amt / PB) : 0);
+    const invested_after = invested_before + Amt + F1;
+    const qty_after      = Q + add_qty_calc;
+    const avg_after      = qty_after ? (invested_after / qty_after) : 0;
+    const value_after    = qty_after * P;
+    const pnl_after      = value_after - invested_after;
+    const pnlp_after     = invested_after ? (pnl_after / invested_after * 100) : 0;
 
-    document.getElementById('saveBtn').addEventListener('click', () => {
-      const data = {
-        qty: qty.value, avg: avg.value, priceNow: priceNow.value, feesExisting: feesExisting.value,
-        amount: amount.value, addQty: addQty.value, buyPrice: buyPrice.value, feesNew: feesNew.value,
-        toggleMode: toggleMode.checked
-      };
-      localStorage.setItem('position_calc_saved', JSON.stringify(data));
-      alert('הקלט נשמר בדפדפן.');
+    // הצגה
+    resSec.classList.remove('hidden');
+    setText('r_inv_before', '$' + fmt2(invested_before));
+    setText('r_val_before', '$' + fmt2(value_before));
+    setText('r_pnl_before', formatSigned(pnl_before));
+    setText('r_pnlp_before', formatSigned(pnlp_before) + '%');
+    setText('r_be_before', '$' + fmt2(be_before));
+
+    setText('r_qty_after', fmt2(qty_after));
+    setText('r_inv_after', '$' + fmt2(invested_after));
+    setText('r_avg_after', '$' + (qty_after ? fmt2(avg_after) : '0.00'));
+    setText('r_val_after', '$' + fmt2(value_after));
+    setText('r_pnl_after', formatSigned(pnl_after));
+    setText('r_pnlp_after', formatSigned(pnlp_after) + '%');
+    setText('r_be_after', '$' + (qty_after ? fmt2(avg_after) : '0.00'));
+
+    // טבלת רגישות
+    const sens = [P*0.9, P*0.95, P, P*1.05, P*1.1, avg_after];
+    const uniq = Array.from(new Set(sens.map(x => Number(x.toFixed(4))))).sort((a,b)=>a-b);
+    const body = document.getElementById('sensBody');
+    body.innerHTML = '';
+    uniq.forEach(price => {
+      const val = qty_after * price;
+      const pnl = val - invested_after;
+      const pnlp = invested_after ? (pnl / invested_after * 100) : 0;
+      body.insertAdjacentHTML('beforeend', `<tr>
+        <td class="py-1 font-mono">$${fmt2(price)}</td>
+        <td class="py-1 font-mono">$${fmt2(val)}</td>
+        <td class="py-1 font-mono ${pnl>=0?'text-green-600':'text-red-600'}">${formatSigned(pnl)}</td>
+        <td class="py-1 font-mono ${pnl>=0?'text-green-600':'text-red-600'}">${fmt2(pnlp)}%</td>
+      </tr>`);
     });
+    sensSec.classList.remove('hidden');
+  }
 
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      [qty, avg, priceNow, feesExisting, amount, addQty, buyPrice, feesNew].forEach(el => el.value = '');
-      toggleMode.checked = false; updateMode();
-      resSec.classList.add('hidden');
-      sensSec.classList.add('hidden');
-      localStorage.removeItem('position_calc_saved');
-    });
+  // עזר
+  function setText(id, v){ document.getElementById(id).textContent = v; }
+  function formatSigned(n){
+    const s = fmt2(n);
+    if (n > 0) return '+$' + s;
+    if (n < 0) return '-$' + fmt2(Math.abs(n));
+    return '$0.00';
+  }
 
-    document.getElementById('toggleMode').addEventListener('change', updateMode);
-    function updateMode(){
-      if (toggleMode.checked) { // לפי כמות
-        amountWrap.classList.add('hidden');
-        addQtyWrap.classList.remove('hidden');
-      } else { // לפי סכום
-        addQtyWrap.classList.add('hidden');
-        amountWrap.classList.remove('hidden');
-      }
-    }
+  // מחשבים בלחיצה…
+  document.getElementById('calcBtn').addEventListener('click', calc);
 
-    document.getElementById('calcBtn').addEventListener('click', () => {
-      const Q = asNum(qty.value);
-      const A = asNum(avg.value);
-      const P = asNum(priceNow.value);
-      const F0 = asNum(feesExisting.value);
-      const useQty = toggleMode.checked;
-      const addQ = useQty ? asNum(addQty.value) : 0;
-      const PB = asNum(buyPrice.value || P);
-      const Amt = useQty ? (addQ * PB) : asNum(amount.value);
-      const F1 = asNum(feesNew.value);
+  // …וגם אוטומטית בכל שינוי קלט (חוויית “חי”)
+  [qty, avg, priceNow, feesExisting, amount, addQty, buyPrice, feesNew]
+    .forEach(el => el.addEventListener('input', calc));
 
-      if (!Q || !A || !P) {
-        alert('אנא מלא לפחות: כמות, ממוצע קיים ושער נוכחי.');
-        return;
-      }
-
-      // לפני מיצוע
-      const invested_before = Q * A + F0;
-      const value_before = Q * P;
-      const pnl_before = value_before - invested_before;
-      const pnlp_before = invested_before ? (pnl_before / invested_before * 100) : 0;
-      const be_before = A + (F0 / Math.max(Q, 1e-12));
-
-      // אחרי מיצוע
-      const add_qty_calc = useQty ? addQ : (PB ? (Amt / PB) : 0);
-      const invested_after = invested_before + Amt + F1;
-      const qty_after = Q + add_qty_calc;
-      const avg_after = qty_after ? (invested_after / qty_after) : 0;
-      const value_after = qty_after * P;
-      const pnl_after = value_after - invested_after;
-      const pnlp_after = invested_after ? (pnl_after / invested_after * 100) : 0;
-
-      // הצגה
-      resSec.classList.remove('hidden');
-      setText('r_inv_before', '$' + fmt2(invested_before));
-      setText('r_val_before', '$' + fmt2(value_before));
-      setText('r_pnl_before', formatSigned(pnl_before));
-      setText('r_pnlp_before', formatSigned(pnlp_before) + '%');
-      setText('r_be_before', '$' + fmt2(be_before));
-
-      setText('r_qty_after', fmt2(qty_after));
-      setText('r_inv_after', '$' + fmt2(invested_after));
-      setText('r_avg_after', '$' + (qty_after ? fmt2(avg_after) : '0.00'));
-      setText('r_val_after', '$' + fmt2(value_after));
-      setText('r_pnl_after', formatSigned(pnl_after));
-      setText('r_pnlp_after', formatSigned(pnlp_after) + '%');
-      setText('r_be_after', '$' + (qty_after ? fmt2(avg_after) : '0.00'));
-
-      // טבלת רגישות
-      const sens = [P*0.9, P*0.95, P, P*1.05, P*1.1, avg_after];
-      const uniq = Array.from(new Set(sens.map(x => Number(x.toFixed(4))))).sort((a,b)=>a-b);
-      const body = document.getElementById('sensBody');
-      body.innerHTML = '';
-      uniq.forEach(price => {
-        const val = qty_after * price;
-        const pnl = val - invested_after;
-        const pnlp = invested_after ? (pnl / invested_after * 100) : 0;
-        body.insertAdjacentHTML('beforeend', `<tr>
-          <td class="py-1 font-mono">$${fmt2(price)}</td>
-          <td class="py-1 font-mono">$${fmt2(val)}</td>
-          <td class="py-1 font-mono ${pnl>=0?'text-green-600':'text-red-600'}">${formatSigned(pnl)}</td>
-          <td class="py-1 font-mono ${pnl>=0?'text-green-600':'text-red-600'}">${formatSigned(pnlp)}%</td>
-        </tr>`);
-      });
-      sensSec.classList.remove('hidden');
-    });
-
-    function setText(id, v){ document.getElementById(id).textContent = v; }
-    function formatSigned(n){
-      const s = fmt2(n);
-      if (n > 0) return '+$' + s;
-      if (n < 0) return '-$' + fmt2(Math.abs(n));
-      return '$0.00';
-    }
-
-    priceNow.addEventListener('input', () => {
-      if (!buyPrice.value) buyPrice.value = priceNow.value;
-    });
-  </script>
+  // נוחות: עדכן שער רכישה אם לא הוזן
+  priceNow.addEventListener('input', () => {
+    if (!buyPrice.value) buyPrice.value = priceNow.value;
+  });
+</script>
 </body>
 </html>
